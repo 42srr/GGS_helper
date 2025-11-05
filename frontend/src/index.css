@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 드롭다운 메뉴 배경 불투명하게 설정 */
+[data-radix-popper-content-wrapper] {
+  z-index: 50;
+}
+
+[role="menuitem"], [role="option"], .dropdown-content {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}
+
+/* ShadcnUI 드롭다운 투명도 수정 */
+[data-state="open"][role="menu"],
+[data-state="open"][data-side],
+.select-content,
+.dropdown-menu-content {
+  background-color: white !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Dialog/Modal 배경 불투명하게 설정 */
+[role="dialog"] {
+  background-color: white !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Dialog 오버레이 수정 */
+[data-state="open"][data-aria-hidden="true"],
+.dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Dialog Content 불투명하게 */
+[data-state="open"][role="dialog"],
+[role="dialog"] > div,
+.dialog-content {
+  background-color: white !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}

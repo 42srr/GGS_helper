@@ -1,0 +1,205 @@
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+/.pnp
+.pnp.js
+jspm_packages/
+
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
+# ============================================
+# Build Output
+# ============================================
+/build
+/dist
+dist-ssr
+/.next
+.nuxt
+.out
+.storybook-out
+/frontend/dist
+/backend/dist
+
+# ============================================
+# Testing & Coverage
+# ============================================
+/coverage
+/.nyc_output
+*.lcov
+
+# ============================================
+# Logs
+# ============================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.txt
+*.log.sql
+query.log
+postgres.log
+log.txt
+
+# ============================================
+# Temporary Files
+# ============================================
+.temp
+.tmp
+tmp/
+temp/
+*.tmp
+*.temp
+.tmp/
+.sass-cache/
+
+# ============================================
+# Runtime Data
+# ============================================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================
+# Diagnostic Reports
+# ============================================
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+dev.db
+development.sqlite
+test.db
+
+# PostgreSQL specific
+postgres_data/
+pgdata/
+postgresql/
+pg_data/
+postgres-data/
+db-data/
+db_data/
+admin_data/
+*.sql.backup
+*.dump
+*.dmp
+
+# pgAdmin
+pgadmin/
+.pgpass
+
+# Database backups
+backups/
+backup_*.sql
+*.backup
+
+# TypeORM
+backend/src/migrations/*.ts
+!backend/src/migrations/.gitkeep
+backend/migrations/*.js
+backend/migrations/*.js.map
+ormconfig.json
+
+# ============================================
+# Cache Directories
+# ============================================
+.cache/
+cache/
+.npm
+.eslintcache
+.parcel-cache
+
+# ============================================
+# Application Specific
+# ============================================
+uploads/
+public/uploads/
+storage/
+
+# API Keys and Secrets
+backend/config/api42-keys.json
+
+# PM2
+ecosystem.config.js
+.pm2/
+
+# claude
+/.claude
+
+# documents
+/docs
+
+# ============================================
+# IDEs and Editors
+# ============================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+/.idea
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Editor temp files
+*.swp
+*.swo
+*.sw?
+*~
+
+# ============================================
+# OS Specific
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ============================================
+# Package Manager
+# ============================================
+.yarn-integrity
+*.tgz
+.node_repl_history
+
+# ============================================
+# Frontend Specific (Vite/React)
+# ============================================
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
