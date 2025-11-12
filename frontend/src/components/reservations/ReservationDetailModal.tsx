@@ -39,13 +39,14 @@ interface Reservation {
   };
   user?: {
     userId: number;
-    name: string;
+    name?: string;
+    login?: string;
   };
 }
 
 interface ReservationDetailModalProps {
   reservation: Reservation | null;
-  room: Room | null;
+  room?: Room | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -157,7 +158,7 @@ export function ReservationDetailModal({
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <User className="w-5 h-5 text-gray-600" />
             <div>
-              <p className="font-medium text-gray-900">{reservation.user?.name || '알 수 없음'}</p>
+              <p className="font-medium text-gray-900">{reservation.user?.name || reservation.user?.login || '알 수 없음'}</p>
               <p className="text-sm text-gray-600">예약자</p>
             </div>
           </div>

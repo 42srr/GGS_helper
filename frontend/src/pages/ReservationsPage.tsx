@@ -11,9 +11,9 @@ interface Reservation {
   userId: number;
   title: string;
   description?: string;
-  startTime: Date | string;
-  endTime: Date | string;
-  createdAt?: Date | string;
+  startTime: Date;
+  endTime: Date;
+  createdAt?: Date;
   room?: {
     roomId: number;
     name: string;
@@ -67,8 +67,8 @@ export function ReservationsPage() {
         const reservationsData = await reservationsResponse.json();
         const roomsData = await roomsResponse.json();
 
-        // 예약 데이터에 Date 객체로 변환
-        const processedReservations = reservationsData.map((res: any) => ({
+        // 예약 데이터 처리 - Calendar 컴포넌트는 Date 타입 필요
+        const processedReservations: Reservation[] = reservationsData.map((res: any) => ({
           ...res,
           startTime: new Date(res.startTime),
           endTime: new Date(res.endTime),

@@ -77,7 +77,8 @@ export function Calendar({ reservations, onEventClick }: CalendarProps) {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-800 border-gray-200';
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';

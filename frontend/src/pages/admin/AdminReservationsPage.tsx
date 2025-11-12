@@ -21,7 +21,6 @@ import {
   Search,
   Download,
   ArrowLeft,
-  Edit,
   Trash2,
   Filter,
   CheckCircle,

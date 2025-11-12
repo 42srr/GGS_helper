@@ -123,7 +123,7 @@ export function useUserStats() {
 
         if (data?.stats?.activeProjects && data.stats.activeProjects.length > 0) {
           console.log('🔄 Active Projects from API:');
-          data.stats.activeProjects.forEach((project, index) => {
+          data.stats.activeProjects.forEach((project: any, index: number) => {
             console.log(`  [${index + 1}] ${project.project?.name} (${project.status})`);
           });
         } else {

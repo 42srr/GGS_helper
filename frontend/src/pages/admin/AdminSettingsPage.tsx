@@ -5,17 +5,12 @@ import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Settings,
   ArrowLeft,
-  Clock,
   Shield,
   Bell,
-  Globe,
   Database,
-  Mail,
-  Users,
   Calendar,
   Save,
   RefreshCw,
@@ -431,7 +426,7 @@ export function AdminSettingsPage() {
   };
 
   const handleDangerousAction = async (action: string) => {
-    const actionNames = {
+    const actionNames: Record<string, string> = {
       'database-reset': '데이터베이스 초기화',
       'system-restart': '시스템 재시작',
       'clear-logs': '로그 파일 삭제'
@@ -472,7 +467,7 @@ export function AdminSettingsPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        await response.json();
         alert(`${actionName}가 성공적으로 실행되었습니다.`);
 
         if (action === 'system-restart') {
@@ -487,27 +482,27 @@ export function AdminSettingsPage() {
     }
   };
 
-  const handleApiKeyTest = async () => {
-    try {
-      const response = await fetch('http://localhost:3001/admin/system/test-api-keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
+  // const handleApiKeyTest = async () => {
+  //   try {
+  //     const response = await fetch('http://localhost:3001/admin/system/test-api-keys', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+  //       },
+  //     });
 
-      if (response.ok) {
-        const result = await response.json();
-        alert(`API 키 테스트 결과:\n\n42 API: ${result.api42 ? '✅ 연결됨' : '❌ 연결 실패'}\n이메일 API: ${result.email ? '✅ 연결됨' : '❌ 연결 실패'}`);
-      } else {
-        alert('API 키 테스트에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('Failed to test API keys:', error);
-      alert('API 키 테스트 중 오류가 발생했습니다.');
-    }
-  };
+  //     if (response.ok) {
+  //       const result = await response.json();
+  //       alert(`API 키 테스트 결과:\n\n42 API: ${result.api42 ? '✅ 연결됨' : '❌ 연결 실패'}\n이메일 API: ${result.email ? '✅ 연결됨' : '❌ 연결 실패'}`);
+  //     } else {
+  //       alert('API 키 테스트에 실패했습니다.');
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to test API keys:', error);
+  //     alert('API 키 테스트 중 오류가 발생했습니다.');
+  //   }
+  // };
 
   const renderToggle = (checked: boolean, onChange: (value: boolean) => void, disabled = false) => (
     <label className="relative inline-flex items-center cursor-pointer">

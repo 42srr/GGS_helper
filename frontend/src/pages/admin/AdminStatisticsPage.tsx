@@ -16,12 +16,10 @@ import {
   Clock,
   Activity,
   Download,
-  Filter,
   RefreshCw,
   PieChart,
   BarChart,
   LineChart,
-  Eye,
   CheckCircle,
   XCircle,
   AlertCircle
@@ -169,11 +167,11 @@ export function AdminStatisticsPage() {
     }
   };
 
-  const formatUptime = (uptime: number) => {
-    const days = Math.floor(uptime);
-    const hours = Math.floor((uptime - days) * 24);
-    return `${days}일 ${hours}시간`;
-  };
+  // const formatUptime = (uptime: number) => {
+  //   const days = Math.floor(uptime);
+  //   const hours = Math.floor((uptime - days) * 24);
+  //   return `${days}일 ${hours}시간`;
+  // };
 
   if (loading) {
     return (

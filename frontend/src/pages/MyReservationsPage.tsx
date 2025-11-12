@@ -10,6 +10,8 @@ import { ReservationDetailModal } from '../components/reservations/ReservationDe
 
 interface Reservation {
   reservationId: number;
+  roomId: number;
+  userId: number;
   title: string;
   description?: string;
   startTime: string;

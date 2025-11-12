@@ -13,7 +13,6 @@ import {
   Plus,
   Download,
   Upload,
-  Settings,
   Edit,
   Trash2,
   ArrowLeft,

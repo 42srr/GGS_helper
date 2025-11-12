@@ -7,12 +7,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Plus, Clock, ChevronDown, User, LogOut, BarChart3, MapPin, Shield, Users } from "lucide-react";
+import { Calendar, Plus, Clock, ChevronDown, User, LogOut, BarChart3, Shield } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function Header() {
   const location = useLocation();
-  const { user, isAuthenticated, logout, login, isAdmin } = useAuth();
+  const { user, isAuthenticated, logout, isAdmin } = useAuth();
 
   return (
     <header className="border-b bg-white">

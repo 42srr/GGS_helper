@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Wallet,
   Star,
-  Calendar,
   Target,
   Users,
   RefreshCw,
@@ -94,10 +93,10 @@ export function DashboardPage() {
   // (기본 로드시에는 데이터베이스에 activeProjects가 빈 배열이므로 로그 생략)
 
   // 최근 활동 Mock 데이터 (실제로는 42 API에서 가져와야 함)
-  const recentActivity = [
-    { type: "evaluation", name: "평가 완료", status: "완료", date: "오늘" },
-    { type: "project", name: "최근 프로젝트", status: "진행중", date: "어제" },
-  ];
+  // const recentActivity = [
+  //   { type: "evaluation", name: "평가 완료", status: "완료", date: "오늘" },
+  //   { type: "project", name: "최근 프로젝트", status: "진행중", date: "어제" },
+  // ];
 
   return (
     <div className="min-h-screen bg-gray-50">

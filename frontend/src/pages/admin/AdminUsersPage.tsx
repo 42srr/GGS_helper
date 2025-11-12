@@ -18,17 +18,11 @@ import {
   Search,
   Download,
   ArrowLeft,
-  Mail,
-  Shield,
   Calendar,
-  Activity,
   Filter,
   Users,
   UserCheck,
   UserX,
-  Crown,
-  GraduationCap,
-  Settings,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -203,38 +197,38 @@ export function AdminUsersPage() {
     });
   };
 
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive ? (
-      <Badge className="bg-green-100 text-green-800 border-green-200">
-        <UserCheck className="w-3 h-3 mr-1" />
-        활성
-      </Badge>
-    ) : (
-      <Badge className="bg-red-100 text-red-800 border-red-200">
-        <UserX className="w-3 h-3 mr-1" />
-        비활성
-      </Badge>
-    );
-  };
+  // const getStatusBadge = (isActive: boolean) => {
+  //   return isActive ? (
+  //     <Badge className="bg-green-100 text-green-800 border-green-200">
+  //       <UserCheck className="w-3 h-3 mr-1" />
+  //       활성
+  //     </Badge>
+  //   ) : (
+  //     <Badge className="bg-red-100 text-red-800 border-red-200">
+  //       <UserX className="w-3 h-3 mr-1" />
+  //       비활성
+  //     </Badge>
+  //   );
+  // };
 
-  const getRoleBadge = (role: string) => {
-    const roleConfig = {
-      admin: { color: 'bg-red-100 text-red-800 border-red-200', icon: Crown, label: '관리자' },
-      staff: { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Settings, label: '직원' },
-      club_leader: { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Shield, label: '동아리장' },
-      student: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: GraduationCap, label: '학생' },
-    };
+  // const getRoleBadge = (role: string) => {
+  //   const roleConfig: Record<string, { color: string; icon: any; label: string }> = {
+  //     admin: { color: 'bg-red-100 text-red-800 border-red-200', icon: Crown, label: '관리자' },
+  //     staff: { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Settings, label: '직원' },
+  //     club_leader: { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Shield, label: '동아리장' },
+  //     student: { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: GraduationCap, label: '학생' },
+  //   };
 
-    const config = roleConfig[role] || roleConfig.student;
-    const IconComponent = config.icon;
+  //   const config = roleConfig[role] || roleConfig['student'];
+  //   const IconComponent = config.icon;
 
-    return (
-      <Badge className={config.color}>
-        <IconComponent className="w-3 h-3 mr-1" />
-        {config.label}
-      </Badge>
-    );
-  };
+  //   return (
+  //     <Badge className={config.color}>
+  //       <IconComponent className="w-3 h-3 mr-1" />
+  //       {config.label}
+  //     </Badge>
+  //   );
+  // };
 
   if (loading) {
     return (
@@ -350,7 +344,7 @@ export function AdminUsersPage() {
                 <div>
                   <p className="text-sm text-gray-600">활성 사용자</p>
                   <p className="text-2xl font-bold mt-1 text-green-600">
-                    {users.filter((u) => u.isActive).length}
+                    {users.filter((u) => u.isAvailable).length}
                   </p>
                 </div>
                 <UserCheck className="w-8 h-8 text-green-500" />
@@ -363,7 +357,7 @@ export function AdminUsersPage() {
                 <div>
                   <p className="text-sm text-gray-600">비활성 사용자</p>
                   <p className="text-2xl font-bold mt-1 text-red-600">
-                    {users.filter((u) => !u.isActive).length}
+                    {users.filter((u) => !u.isAvailable).length}
                   </p>
                 </div>
                 <UserX className="w-8 h-8 text-red-500" />

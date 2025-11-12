@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown } from 'lucide-react';
 
 interface Room {
@@ -29,6 +30,7 @@ export function CreateReservationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [showRulesDialog, setShowRulesDialog] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -166,7 +168,7 @@ export function CreateReservationPage() {
     }
 
     // 종료 시간으로부터 2시간 전까지의 옵션만 필터링 (30분 단위이므로 4칸)
-    return allOptions.filter((time, index) => {
+    return allOptions.filter((_time, index) => {
       return index < endIndex && index >= endIndex - 4;
     });
   };
@@ -185,7 +187,7 @@ export function CreateReservationPage() {
     }
 
     // 시작 시간으로부터 2시간 후까지의 옵션만 필터링 (30분 단위이므로 4칸)
-    return allOptions.filter((time, index) => {
+    return allOptions.filter((_time, index) => {
       return index > startIndex && index <= startIndex + 4;
     });
   };
@@ -196,6 +198,67 @@ export function CreateReservationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+
+      {/* 이용 수칙 다이얼로그 */}
+      <Dialog open={showRulesDialog} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">이용자 의무수칙</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div>
+              <h3 className="font-bold text-lg mb-2">청결 유지</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>퇴실 전 자리 정돈 및 쓰레기 처리 필수</li>
+                <li>퇴실 시간 5분 전 정리 완료</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg mb-2">음식물 반입</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>음식물 반입 제한 (필요 시 지정 구역에서만 가능)</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg mb-2">타인 배려</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>소음 자제, 다른 이용자에게 방해 금지</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg mb-2">본인 확인</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>예약자 본인 입실 원칙</li>
+                <li>타인 대리 사용 금지</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg mb-2">필수 확인 사항</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>입실 시: 좌석 상태 사진 촬영</li>
+                <li>퇴실 시: 정리 완료 후 좌석 상태 사진 촬영</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg mb-2">시간 관련 안내</h3>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-gray-700">
+                <li>지각: 예약 시간 10분 경과</li>
+                <li>노쇼: 예약 시간 30분 경과 (자동 취소)</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowRulesDialog(false)} className="w-full">
+              동의하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">

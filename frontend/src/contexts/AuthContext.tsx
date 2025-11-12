@@ -1,11 +1,13 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export enum Role {
-  STUDENT = 'student',
-  STAFF = 'staff',
-  CLUB_LEADER = 'club_leader',
-  ADMIN = 'admin',
-}
+export const Role = {
+  STUDENT: 'student',
+  STAFF: 'staff',
+  CLUB_LEADER: 'club_leader',
+  ADMIN: 'admin',
+} as const;
+
+export type Role = typeof Role[keyof typeof Role];
 
 interface User {
   id: number;
