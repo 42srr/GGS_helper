@@ -17,6 +17,7 @@
 ## 2. 백엔드 및 프론트엔드 개발 서버 실행
 
 - frontend 경로 및 backend 경로에서 npm install 명령어 실행
+- .env 파일 채워넣기
 - frontend 경로에서 npm run dev 명령어 실행
 - backend 경로에서 npm run start:dev 명령어 실행
 
