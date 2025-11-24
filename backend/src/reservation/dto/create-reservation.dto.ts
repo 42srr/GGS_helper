@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsDateString,
   Min,
+  Max,
 } from 'class-validator';
 
 export class CreateReservationDto {
@@ -25,7 +26,8 @@ export class CreateReservationDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(4)
+  @Max(12)
   attendees?: number;
 
   @IsOptional()

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown, RotateCcw } from 'lucide-react';
 
 interface Room {
   roomId: number;
@@ -31,6 +31,8 @@ export function CreateReservationPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [showRulesDialog, setShowRulesDialog] = useState(true);
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [banInfo, setBanInfo] = useState<{ banUntil: string | null }>({ banUntil: null });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -38,12 +40,34 @@ export function CreateReservationPage() {
     startTime: '',
     endTime: '',
     roomId: '',
-    teamName: ''
+    teamName: '',
+    attendees: ''
   });
 
   useEffect(() => {
+    checkReservationStatus();
     fetchRooms();
   }, []);
+
+  const checkReservationStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/users/reservation-status', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isBanned) {
+          setBanInfo({ banUntil: data.banUntil });
+          setShowBanDialog(true);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check reservation status:', error);
+    }
+  };
 
   useEffect(() => {
     // URL 파라미터에서 roomId 확인 및 방 자동 선택
@@ -94,7 +118,8 @@ export function CreateReservationPage() {
         roomId: parseInt(formData.roomId),
         startTime: `${formData.date}T${formData.startTime}:00+09:00`, // KST 명시
         endTime: `${formData.date}T${formData.endTime}:00+09:00`,       // KST 명시
-        teamName: formData.teamName || undefined
+        teamName: formData.teamName || undefined,
+        attendees: formData.attendees ? parseInt(formData.attendees) : undefined
       };
 
       console.log('Sending reservation data:', reservationData);
@@ -126,6 +151,10 @@ export function CreateReservationPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const resetTimeSelection = () => {
+    setFormData(prev => ({ ...prev, startTime: '', endTime: '' }));
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -198,6 +227,49 @@ export function CreateReservationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+
+      {/* 예약 금지 다이얼로그 */}
+      <Dialog open={showBanDialog} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-red-600">예약 제한 안내</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+              <p className="text-gray-900 font-medium mb-2">
+                예약이 제한되었습니다.
+              </p>
+              {banInfo.banUntil ? (
+                <p className="text-gray-700">
+                  <span className="font-semibold">해제일:</span>{' '}
+                  {new Date(banInfo.banUntil).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                  })}
+                </p>
+              ) : (
+                <p className="text-red-700 font-semibold">
+                  노쇼 3회 누적으로 영구 예약 금지되었습니다.
+                  <br />
+                  관리자와의 면담 후 해제 가능합니다.
+                </p>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">
+              {banInfo.banUntil
+                ? '노쇼 또는 지각 3회 누적으로 7일간 예약이 제한됩니다. 해제일 이후에 다시 예약하실 수 있습니다.'
+                : '노쇼 3회 누적으로 예약이 영구 제한되었습니다. 관리자에게 문의하여 면담을 진행해주세요.'}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => navigate('/reservations')} className="w-full">
+              예약 목록으로 돌아가기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 이용 수칙 다이얼로그 */}
       <Dialog open={showRulesDialog} onOpenChange={() => {}}>
@@ -319,6 +391,20 @@ export function CreateReservationPage() {
                     placeholder="예: 개발팀, 디자인팀"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="attendees">예약 인원 *</Label>
+                  <Input
+                    id="attendees"
+                    type="number"
+                    min="4"
+                    max="12"
+                    value={formData.attendees}
+                    onChange={(e) => handleInputChange('attendees', e.target.value)}
+                    placeholder="4명 이상 12명 이하"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">최소 4명, 최대 12명까지 예약 가능합니다.</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -433,57 +519,75 @@ export function CreateReservationPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Start Time */}
-                  <div className="flex flex-col gap-3">
-                    <Label htmlFor="start-time-picker" className="px-1">
-                      시작 시간 *
-                    </Label>
-                    <Select
-                      value={formData.startTime}
-                      onValueChange={(value) => handleInputChange('startTime', value)}
-                      required
-                    >
-                      <SelectTrigger className="w-full">
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-gray-500" />
-                          <SelectValue placeholder="시작 시간 선택" />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px] overflow-y-auto">
-                        {startTimeOptions.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">시간 선택</Label>
+                    {(formData.startTime || formData.endTime) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={resetTimeSelection}
+                        className="h-8 text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                        시간 초기화
+                      </Button>
+                    )}
                   </div>
 
-                  {/* End Time */}
-                  <div className="flex flex-col gap-3">
-                    <Label htmlFor="end-time-picker" className="px-1">
-                      종료 시간 *
-                    </Label>
-                    <Select
-                      value={formData.endTime}
-                      onValueChange={(value) => handleInputChange('endTime', value)}
-                      required
-                    >
-                      <SelectTrigger className="w-full">
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-gray-500" />
-                          <SelectValue placeholder="종료 시간 선택" />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px] overflow-y-auto">
-                        {endTimeOptions.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Start Time */}
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="start-time-picker" className="px-1">
+                        시작 시간 *
+                      </Label>
+                      <Select
+                        value={formData.startTime}
+                        onValueChange={(value) => handleInputChange('startTime', value)}
+                        required
+                      >
+                        <SelectTrigger className="w-full">
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                            <SelectValue placeholder="시작 시간 선택" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px] overflow-y-auto">
+                          {startTimeOptions.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* End Time */}
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="end-time-picker" className="px-1">
+                        종료 시간 *
+                      </Label>
+                      <Select
+                        value={formData.endTime}
+                        onValueChange={(value) => handleInputChange('endTime', value)}
+                        required
+                      >
+                        <SelectTrigger className="w-full">
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                            <SelectValue placeholder="종료 시간 선택" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px] overflow-y-auto">
+                          {endTimeOptions.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
@@ -522,7 +626,7 @@ export function CreateReservationPage() {
               <Button
                 type="submit"
                 className="flex-1"
-                disabled={!formData.title || !formData.roomId || !formData.date || !formData.startTime || !formData.endTime || submitting}
+                disabled={!formData.title || !formData.roomId || !formData.date || !formData.startTime || !formData.endTime || !formData.attendees || submitting}
               >
                 {submitting ? '예약 중...' : '예약하기'}
               </Button>

@@ -38,6 +38,7 @@ interface UserData {
   createdAt: string;
   updatedAt: string;
   noShowCount?: number;
+  lateCount?: number;
   isReservationBanned?: boolean;
   banUntil?: string;
   _count?: {
@@ -381,6 +382,7 @@ export function AdminUsersPage() {
                     <th className="text-left p-4 font-medium">권한</th>
                     <th className="text-left p-4 font-medium">상태</th>
                     <th className="text-left p-4 font-medium">노쇼</th>
+                    <th className="text-left p-4 font-medium">지각</th>
                     <th className="text-left p-4 font-medium">가입일</th>
                     <th className="text-left p-4 font-medium">최종 로그인</th>
                   </tr>
@@ -450,12 +452,65 @@ export function AdminUsersPage() {
                               </Badge>
                             )}
                           </div>
-                          {user.isReservationBanned && user.banUntil && (
-                            <span className="text-xs text-red-600">
-                              {new Date(user.banUntil) > new Date()
-                                ? `금지 (${formatDate(user.banUntil)}까지)`
-                                : '금지 해제됨'}
-                            </span>
+                          {user.isReservationBanned && (
+                            <div className="flex flex-col gap-1">
+                              {user.banUntil ? (
+                                <span className="text-xs text-red-600">
+                                  {new Date(user.banUntil) > new Date()
+                                    ? `금지 (${formatDate(user.banUntil)}까지)`
+                                    : '금지 해제됨'}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-red-600 font-semibold">
+                                  영구 금지 (면담 필요)
+                                </span>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-xs"
+                                onClick={async () => {
+                                  if (confirm('예약 금지를 해제하시겠습니까?')) {
+                                    try {
+                                      const response = await fetch(`http://localhost:3001/users/${user.userId}/reservation-ban`, {
+                                        method: 'PATCH',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+                                        },
+                                        body: JSON.stringify({
+                                          isReservationBanned: false,
+                                          banUntil: null
+                                        }),
+                                      });
+                                      if (response.ok) {
+                                        alert('예약 금지가 해제되었습니다.');
+                                        fetchUsers();
+                                      } else {
+                                        alert('예약 금지 해제에 실패했습니다.');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error:', error);
+                                      alert('오류가 발생했습니다.');
+                                    }
+                                  }
+                                }}
+                              >
+                                금지 해제
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${(user.lateCount || 0) >= 3 ? 'text-orange-600' : 'text-gray-900'}`}>
+                            {user.lateCount || 0}회
+                          </span>
+                          {(user.lateCount || 0) >= 3 && (
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                              주의
+                            </Badge>
                           )}
                         </div>
                       </td>

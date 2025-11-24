@@ -56,6 +56,9 @@ export class User {
   @Column({ name: 'last_no_show_at', type: 'timestamp', nullable: true })
   lastNoShowAt: Date | null;
 
+  @Column({ name: 'late_count', type: 'integer', default: 0 })
+  lateCount: number;
+
   @Column({ name: 'is_reservation_banned', type: 'boolean', default: false })
   isReservationBanned: boolean;
 

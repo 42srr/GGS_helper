@@ -54,6 +54,9 @@ export class Reservation {
   @Column({ name: 'check_in_at', type: 'timestamp', nullable: true })
   checkInAt: Date;
 
+  @Column({ name: 'is_late', type: 'boolean', default: false })
+  isLate: boolean;
+
   @CreateDateColumn({ name: 'reservation_createdat' })
   createdAt: Date;
 

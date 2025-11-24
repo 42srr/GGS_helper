@@ -42,16 +42,16 @@ export class ReservationService {
     }
   }
 
-  // 5분마다 체크인 안된 예약 중 시작+10분 지난 것을 노쇼 처리
+  // 5분마다 체크인 안된 예약 중 시작+30분 지난 것을 노쇼 처리
   @Cron('*/5 * * * *')
   async handleAutoNoShow() {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-    // 시작 시간이 10분 이상 지났는데 체크인 안된 confirmed 예약
+    // 시작 시간이 30분 이상 지났는데 체크인 안된 confirmed 예약
     const expiredReservations = await this.reservationRepository.find({
       where: {
         status: 'confirmed',
-        startTime: LessThan(tenMinutesAgo),
+        startTime: LessThan(thirtyMinutesAgo),
         checkInAt: IsNull(),
         isNoShow: false, // 이미 노쇼 처리된 것 제외
       },
@@ -86,16 +86,19 @@ export class ReservationService {
       user.noShowCount += 1;
       user.lastNoShowAt = now;
 
-      // 노쇼 3회 이상이면 예약 금지 (7일간)
+      // 노쇼 발생시 즉시 7일간 예약 금지
+      user.isReservationBanned = true;
+      const banUntil = new Date(now);
+      banUntil.setDate(banUntil.getDate() + 7); // 7일 후
+      user.banUntil = banUntil;
+
+      // 노쇼 3회 이상이면 영구 예약 금지 (관리자 면담 필요)
       if (user.noShowCount >= 3) {
-        user.isReservationBanned = true;
-        const banUntil = new Date(now);
-        banUntil.setDate(banUntil.getDate() + 7); // 7일 후
-        user.banUntil = banUntil;
+        user.banUntil = null; // 영구 금지 (해제일 없음)
       }
 
       await this.userRepository.save(user);
-      console.log(`User ${user.userId} no-show count: ${user.noShowCount}`);
+      console.log(`User ${user.userId} no-show count: ${user.noShowCount}, banned until: ${user.banUntil || 'permanent'}`);
     }
   }
 
@@ -117,11 +120,19 @@ export class ReservationService {
 
     if (user.isReservationBanned) {
       const now = new Date();
+
+      // 영구 금지인 경우 (banUntil이 null)
+      if (!user.banUntil) {
+        throw new BadRequestException(
+          `노쇼 3회 누적으로 예약이 영구 제한되었습니다. 관리자에게 문의하여 면담을 진행해주세요.`
+        );
+      }
+
       // 예약 금지 기간이 지났는지 확인
-      if (user.banUntil && user.banUntil > now) {
+      if (user.banUntil > now) {
         const banUntilKST = new Date(user.banUntil.getTime() + 9 * 60 * 60 * 1000);
         throw new BadRequestException(
-          `노쇼 3회 이상으로 예약이 제한되었습니다. 해제일: ${banUntilKST.toISOString().split('T')[0]}`
+          `예약이 제한되었습니다. 해제일: ${banUntilKST.toISOString().split('T')[0]}`
         );
       } else {
         // 금지 기간이 지났으면 해제
@@ -503,14 +514,53 @@ export class ReservationService {
       throw new BadRequestException('예약 시작 10분 전부터 체크인이 가능합니다');
     }
 
-    // 예약 시작 시간 + 10분 이후에는 체크인 불가 (이미 노쇼 처리됨)
-    const tenMinutesAfterStart = new Date(reservation.startTime.getTime() + 10 * 60 * 1000);
-    if (now > tenMinutesAfterStart) {
-      throw new BadRequestException('체크인 가능 시간이 지났습니다 (시작 시간 후 10분까지만 가능)');
+    // 예약 시작 시간 + 30분 이후에는 체크인 불가 (노쇼 처리됨)
+    const thirtyMinutesAfterStart = new Date(reservation.startTime.getTime() + 30 * 60 * 1000);
+    if (now > thirtyMinutesAfterStart) {
+      throw new BadRequestException('체크인 가능 시간이 지났습니다 (시작 시간 후 30분까지만 가능)');
     }
 
     // 체크인 처리
     reservation.checkInAt = now;
+
+    // 지각 여부 판단 (시작 후 10분 ~ 30분 사이)
+    const tenMinutesAfterStart = new Date(reservation.startTime.getTime() + 10 * 60 * 1000);
+    if (now > tenMinutesAfterStart) {
+      reservation.isLate = true;
+
+      // 사용자의 지각 카운트 증가
+      const user = await this.userRepository.findOne({
+        where: { userId: reservation.userId },
+      });
+
+      if (user) {
+        user.lateCount += 1;
+        console.log(`User ${user.userId} late count: ${user.lateCount}`);
+
+        // 지각 3회시 노쇼 카운트 1회 추가 및 즉시 7일간 예약 금지
+        if (user.lateCount >= 3) {
+          user.noShowCount += 1;
+          user.lateCount = 0; // 지각 카운트 초기화
+          console.log(`User ${user.userId} reached 3 lates. No-show count increased to: ${user.noShowCount}`);
+
+          // 즉시 7일간 예약 금지
+          user.isReservationBanned = true;
+          const banUntil = new Date(now);
+          banUntil.setDate(banUntil.getDate() + 7); // 7일 후
+          user.banUntil = banUntil;
+
+          // 노쇼 3회 이상이면 영구 예약 금지 (관리자 면담 필요)
+          if (user.noShowCount >= 3) {
+            user.banUntil = null; // 영구 금지 (해제일 없음)
+          }
+
+          console.log(`User ${user.userId} banned until ${user.banUntil || 'permanent'}`);
+        }
+
+        await this.userRepository.save(user);
+      }
+    }
+
     return await this.reservationRepository.save(reservation);
   }
 
