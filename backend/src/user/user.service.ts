@@ -230,6 +230,7 @@ export class UserService {
         'user.grade',
         'user.noShowCount',
         'user.lastNoShowAt',
+        'user.lateCount',
         'user.isReservationBanned',
         'user.banUntil',
       ])

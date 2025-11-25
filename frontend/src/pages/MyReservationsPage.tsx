@@ -18,6 +18,7 @@ interface Reservation {
   endTime: string;
   status?: string;
   isNoShow?: boolean;
+  isLate?: boolean;
   checkInAt?: string;
   room: {
     roomId: number;
@@ -123,10 +124,10 @@ export function MyReservationsPage() {
     const now = new Date();
     const startTime = new Date(reservation.startTime);
     const tenMinutesBeforeStart = new Date(startTime.getTime() - 10 * 60 * 1000);
-    const tenMinutesAfterStart = new Date(startTime.getTime() + 10 * 60 * 1000);
+    const thirtyMinutesAfterStart = new Date(startTime.getTime() + 30 * 60 * 1000);
 
-    // 시작 10분 전부터 시작 후 10분까지만 체크인 가능
-    return now >= tenMinutesBeforeStart && now <= tenMinutesAfterStart;
+    // 시작 10분 전부터 시작 후 30분까지만 체크인 가능
+    return now >= tenMinutesBeforeStart && now <= thirtyMinutesAfterStart;
   };
 
   const canCancel = (reservation: Reservation) => {
@@ -339,21 +340,26 @@ export function MyReservationsPage() {
                               {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
                             </td>
                             <td className="px-4 py-4">
-                              {reservation.status === 'pending' && (
-                                <Badge variant="outline" className="border-yellow-200 text-yellow-600">대기중</Badge>
-                              )}
-                              {reservation.status === 'confirmed' && (
-                                <Badge variant="outline" className="border-green-200 text-green-600">확정</Badge>
-                              )}
-                              {reservation.status === 'finished' && (
-                                <Badge variant="outline" className="border-gray-200 text-gray-600">종료</Badge>
-                              )}
-                              {reservation.status === 'cancelled' && (
-                                <Badge variant="outline" className="border-red-200 text-red-600">취소</Badge>
-                              )}
-                              {reservation.isNoShow && (
-                                <Badge variant="outline" className="border-red-200 text-red-600 ml-1">노쇼</Badge>
-                              )}
+                              <div className="flex flex-wrap gap-1">
+                                {reservation.status === 'pending' && (
+                                  <Badge variant="outline" className="border-yellow-200 text-yellow-600">대기중</Badge>
+                                )}
+                                {reservation.status === 'confirmed' && (
+                                  <Badge variant="outline" className="border-green-200 text-green-600">확정</Badge>
+                                )}
+                                {reservation.status === 'finished' && (
+                                  <Badge variant="outline" className="border-gray-200 text-gray-600">종료</Badge>
+                                )}
+                                {reservation.status === 'cancelled' && (
+                                  <Badge variant="outline" className="border-red-200 text-red-600">취소</Badge>
+                                )}
+                                {reservation.isNoShow && (
+                                  <Badge variant="outline" className="border-red-200 text-red-600">노쇼</Badge>
+                                )}
+                                {reservation.isLate && (
+                                  <Badge variant="outline" className="border-orange-200 text-orange-600">지각</Badge>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex gap-2">

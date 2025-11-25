@@ -38,6 +38,8 @@ interface Reservation {
   createdAt: string;
   updatedAt: string;
   isNoShow?: boolean;
+  isLate?: boolean;
+  checkInAt?: string;
   noShowReportedAt?: string;
   noShowReportCount?: number;
   room: {
@@ -583,6 +585,18 @@ export function AdminReservationsPage() {
                             <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">
                               <AlertCircle className="w-3 h-3 mr-1" />
                               노쇼 {reservation.noShowReportCount && `(${reservation.noShowReportCount}회)`}
+                            </Badge>
+                          )}
+                          {reservation.isLate && (
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              지각
+                            </Badge>
+                          )}
+                          {reservation.checkInAt && (
+                            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              체크인 완료
                             </Badge>
                           )}
                         </div>
