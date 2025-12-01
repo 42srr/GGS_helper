@@ -17,6 +17,13 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminBackupPage } from './pages/admin/AdminBackupPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminStatisticsPage } from './pages/admin/AdminStatisticsPage';
+import { AdminClubsPage } from './pages/admin/AdminClubsPage';
+import { CreateClubPage } from './pages/club/CreateClubPage';
+import { ClubsPage } from './pages/club/ClubsPage';
+import { ClubDetailPage } from './pages/club/ClubDetailPage';
+import { ClubManagePage } from './pages/club/manage/ClubManagePage';
+import { ClubManageMembersPage } from './pages/club/manage/ClubManageMembersPage';
+import { ClubManageSettingsPage } from './pages/club/manage/ClubManageSettingsPage';
 
 function App() {
   return (
@@ -56,6 +63,36 @@ function App() {
               <CreateRoomPage />
             </ProtectedRoute>
           } />
+          <Route path="/clubs" element={
+            <ProtectedRoute>
+              <ClubsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/clubs/create" element={
+            <ProtectedRoute>
+              <CreateClubPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/clubs/:id" element={
+            <ProtectedRoute>
+              <ClubDetailPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/clubs/:id/manage" element={
+            <ProtectedRoute>
+              <ClubManagePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/clubs/:id/manage/members" element={
+            <ProtectedRoute>
+              <ClubManageMembersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/clubs/:id/manage/settings" element={
+            <ProtectedRoute>
+              <ClubManageSettingsPage />
+            </ProtectedRoute>
+          } />
           <Route path="/admin" element={
             <ProtectedRoute adminOnly>
               <AdminPage />
@@ -64,6 +101,7 @@ function App() {
             <Route path="rooms" element={<AdminRoomsPage />} />
             <Route path="reservations" element={<AdminReservationsPage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="clubs" element={<AdminClubsPage />} />
             <Route path="backup" element={<AdminBackupPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="statistics" element={<AdminStatisticsPage />} />

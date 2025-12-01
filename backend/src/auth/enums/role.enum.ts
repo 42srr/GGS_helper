@@ -22,6 +22,9 @@ export const PERMISSIONS = {
     'user:read:own',
     'user:update:own',
     'statistics:read',
+    'club:create',
+    'club:read',
+    'club:join',
   ],
 
   [Role.STAFF]: [
@@ -40,6 +43,10 @@ export const PERMISSIONS = {
     'room:update',
     'user:read:all',
     'statistics:read',
+    'club:create',
+    'club:read',
+    'club:update',
+    'club:join',
   ],
 
   [Role.ADMIN]: [
@@ -50,5 +57,6 @@ export const PERMISSIONS = {
     'admin:*',
     'statistics:*',
     'system:*',
+    'club:*',
   ],
 };

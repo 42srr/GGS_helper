@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Plus, Clock, ChevronDown, User, LogOut, BarChart3, Shield } from "lucide-react";
+import { Calendar, Plus, Clock, ChevronDown, User, LogOut, BarChart3, Shield, Users } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function Header() {
@@ -71,6 +71,35 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* 동아리 드롭다운 메뉴 */}
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger className={`flex items-center space-x-1 transition-colors hover:text-gray-900 ${
+                location.pathname.startsWith('/clubs')
+                  ? 'text-blue-600 font-medium'
+                  : 'text-gray-600'
+              }`}>
+                <Users className="w-4 h-4" />
+                <span>동아리</span>
+                <ChevronDown className="w-3 h-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48 py-2">
+                <DropdownMenuItem asChild className="my-1">
+                  <Link to="/clubs" className="flex items-center">
+                    <Users className="w-4 h-4 mr-2" />
+                    동아리 목록
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="my-1">
+                  <Link to="/clubs/create" className="flex items-center">
+                    <Plus className="w-4 h-4 mr-2" />
+                    동아리 생성
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* 관리자 메뉴 - 관리자에게만 표시 */}
           {isAuthenticated && isAdmin() && (

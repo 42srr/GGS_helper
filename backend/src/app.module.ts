@@ -10,12 +10,15 @@ import { Api42Module } from './api-42/api-42.module';
 import { RoomModule } from './room/room.module';
 import { ReservationModule } from './reservation/reservation.module';
 import { AdminModule } from './admin/admin.module';
+import { ClubModule } from './club/club.module';
 import { User } from './user/entities/user.entity';
 import { Info } from './user/entities/info.entity';
 import { Room } from './room/entities/room.entity';
 import { Reservation } from './reservation/entities/reservation.entity';
 import { SystemSettings } from './admin/entities/system-settings.entity';
 import { ActivityLog } from './admin/entities/activity-log.entity';
+import { Club } from './club/entities/club.entity';
+import { ClubMember } from './club/entities/club-member.entity';
 
 @Module({
   imports: [
@@ -39,6 +42,8 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
           Reservation,
           SystemSettings,
           ActivityLog,
+          Club,
+          ClubMember,
         ],
         synchronize: true, // Development mode - auto-create tables
         timezone: 'Asia/Seoul', // 한국 시간대 설정
@@ -65,6 +70,7 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
     RoomModule,
     ReservationModule,
     AdminModule,
+    ClubModule,
   ],
   controllers: [AppController],
   providers: [AppService],

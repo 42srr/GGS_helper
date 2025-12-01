@@ -14,7 +14,8 @@ import {
   Database,
   FileText,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Users as ClubIcon
 } from 'lucide-react';
 
 // 상대적 시간 표시 함수
@@ -250,6 +251,14 @@ export function AdminPage() {
       link: '/admin/reservations',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
+    },
+    {
+      title: '동아리 관리',
+      description: '동아리 생성 승인 및 관리',
+      icon: ClubIcon,
+      link: '/admin/clubs',
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50'
     },
     {
       title: '통계 대시보드',
