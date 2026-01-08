@@ -56,6 +56,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const accessToken = localStorage.getItem('accessToken');
       const refreshToken = localStorage.getItem('refreshToken');
 
+      console.log('[AUTH-CHECK] Starting authentication check');
+      console.log('[AUTH-CHECK] Token exists:', !!accessToken);
+
       if (accessToken) {
         try {
           // 현재 사용자 정보 가져오기
@@ -67,15 +70,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           if (response.ok) {
             const user: User = await response.json();
+            console.log('[AUTH-CHECK] Logged in as:', user.username, '| Role:', user.role);
             setAuthState({
               user,
               isAuthenticated: true,
               isLoading: false,
             });
           } else if (response.status === 401 && refreshToken) {
+            console.log('[AUTH-CHECK] Token expired, attempting refresh');
             // 토큰 갱신 시도
             await handleRefreshToken();
           } else {
+            console.log('[AUTH-CHECK] Invalid token, clearing storage');
             // 토큰이 유효하지 않음
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
@@ -86,7 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
+          console.error('[AUTH-CHECK] Failed:', error);
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -94,6 +100,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           });
         }
       } else {
+        console.log('[AUTH-CHECK] No token found, user not authenticated');
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -189,6 +196,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');
 
+    console.log('[LOGOUT] Starting logout process');
+    console.log('[LOGOUT] Current localStorage keys:', Object.keys(localStorage));
+
+    // 먼저 상태를 초기화
+    setAuthState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+
+    // 백엔드에 로그아웃 요청 (비동기로 처리, 실패해도 계속 진행)
     if (accessToken) {
       try {
         await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -197,21 +215,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             Authorization: `Bearer ${accessToken}`,
           },
         });
+        console.log('[LOGOUT] Backend logout successful');
       } catch (error) {
-        console.error('Logout API call failed:', error);
+        console.error('[LOGOUT] Backend logout failed:', error);
       }
     }
 
-    // 로컬 스토리지 정리
+    // 인증 관련 항목만 명시적으로 삭제
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
+    sessionStorage.clear();
 
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    console.log('[LOGOUT] Storage cleared');
+    console.log('[LOGOUT] Remaining localStorage keys:', Object.keys(localStorage));
+
+    // 페이지 새로고침 대신 navigate 사용하도록 수정 필요
+    // 하지만 이 컴포넌트에서는 navigate를 사용할 수 없으므로
+    // window.location을 사용하되, 약간의 딜레이를 줘서 storage가 반영되도록 함
+    setTimeout(() => {
+      console.log('[LOGOUT] Redirecting to login page');
+      window.location.href = '/login';
+    }, 100);
   };
 
   const refreshToken = async () => {

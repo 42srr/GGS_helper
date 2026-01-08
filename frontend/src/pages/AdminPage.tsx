@@ -61,9 +61,7 @@ export function AdminPage() {
 
   const fetchSystemStats = async () => {
     try {
-      console.log('Fetching system stats...');
       const token = localStorage.getItem('accessToken');
-      console.log('Access token:', token ? 'Found' : 'Not found');
 
       const response = await fetch('http://localhost:3001/admin/system/stats', {
         headers: {
@@ -71,11 +69,8 @@ export function AdminPage() {
         }
       });
 
-      console.log('System stats response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('System stats data:', data);
         setStats(prev => ({
           ...prev,
           totalRooms: data.totalRooms,
@@ -83,18 +78,14 @@ export function AdminPage() {
           totalUsers: data.totalUsers,
           totalReservations: data.totalReservations
         }));
-      } else {
-        const errorData = await response.text();
-        console.error('System stats error:', errorData);
       }
     } catch (error) {
-      console.error('Failed to fetch system stats:', error);
+      console.error('Failed to fetch system stats');
     }
   };
 
   const fetchStatistics = async () => {
     try {
-      console.log('Fetching statistics...');
       const token = localStorage.getItem('accessToken');
 
       const response = await fetch('http://localhost:3001/admin/statistics?period=30d', {
@@ -103,28 +94,21 @@ export function AdminPage() {
         }
       });
 
-      console.log('Statistics response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Statistics data:', data);
         setStats(prev => ({
           ...prev,
           userGrowth: data.overview?.userGrowth || 0,
           reservationGrowth: data.overview?.reservationGrowth || 0
         }));
-      } else {
-        const errorData = await response.text();
-        console.error('Statistics error:', errorData);
       }
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+      console.error('Failed to fetch statistics');
     }
   };
 
   const fetchRecentActivities = async () => {
     try {
-      console.log('Fetching recent activities...');
       const token = localStorage.getItem('accessToken');
 
       const response = await fetch('http://localhost:3001/admin/activities/recent?limit=5', {
@@ -133,24 +117,15 @@ export function AdminPage() {
         }
       });
 
-      console.log('Activities response status:', response.status);
-
       if (response.ok) {
         const activities = await response.json();
-        console.log('Activities data:', activities);
         setRecentActivities(activities);
-      } else {
-        const errorData = await response.text();
-        console.error('Activities error:', errorData);
-
+      } else if (response.status === 401) {
         // 샘플 데이터 생성 시도
-        if (response.status === 401) {
-          console.log('Unauthorized - trying to create sample data...');
-          await createSampleActivities();
-        }
+        await createSampleActivities();
       }
     } catch (error) {
-      console.error('Failed to fetch recent activities:', error);
+      console.error('Failed to fetch recent activities');
     }
   };
 
