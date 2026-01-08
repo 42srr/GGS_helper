@@ -18,10 +18,8 @@ export function Header() {
     <header className="border-b border-line bg-primary">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">GGS</span>
-          </div>
-          <span className="text-xl font-bold text-white">GGS Helper</span>
+          <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
+          <span className="text-xl font-bold text-white">룸잇</span>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6">

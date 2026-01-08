@@ -81,9 +81,12 @@ export function PublicReservationsPage() {
       <header className="bg-white shadow-sm border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-primary">GGS Helper</h1>
-              <p className="text-xs sm:text-sm text-secondary">회의실 예약 시스템</p>
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-primary">룸잇</h1>
+                <p className="text-xs sm:text-sm text-secondary">회의실 예약 시스템</p>
+              </div>
             </div>
             <Button onClick={handleLogin} className="gap-1 sm:gap-2 text-sm sm:text-base px-3 sm:px-4 h-8 sm:h-9">
               <LogIn className="w-4 h-4" />

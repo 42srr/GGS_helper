@@ -68,9 +68,7 @@ export function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface">
       <div className="max-w-md w-full space-y-8 px-4">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-accent rounded-xl flex items-center justify-center mb-6">
-            <span className="text-white font-bold text-2xl">GGS</span>
-          </div>
+          <img src="/logo.png" alt="룸잇" className="mx-auto w-16 h-16 rounded-xl mb-6" />
           <h2 className="text-3xl font-bold text-primary">회원가입</h2>
           <p className="mt-4 text-secondary">
             새 계정을 만들어 회의실 예약 서비스를 이용하세요.
