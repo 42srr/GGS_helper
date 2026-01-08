@@ -42,16 +42,16 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-surface">
       <div className="max-w-md w-full space-y-8 px-4">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-6">
+          <div className="mx-auto w-16 h-16 bg-accent rounded-xl flex items-center justify-center mb-6">
             <span className="text-white font-bold text-2xl">GGS</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-primary">
             회의실 예약 시스템
           </h2>
-          <p className="mt-4 text-gray-600">
+          <p className="mt-4 text-secondary">
             계정으로 로그인하여 회의실 예약 서비스를 이용하세요.
           </p>
         </div>
@@ -106,7 +106,7 @@ export function LoginPage() {
           <div className="text-center">
             <Link
               to="/register"
-              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+              className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
             >
               계정이 없으신가요? 회원가입
             </Link>
@@ -114,8 +114,8 @@ export function LoginPage() {
         </form>
 
         <div className="mt-8">
-          <div className="border-t border-gray-200 pt-6">
-            <p className="text-xs text-gray-500 text-center">
+          <div className="border-t border-line pt-6">
+            <p className="text-xs text-secondary text-center">
               이 서비스는 42 경산 캠퍼스 학생들을 위한 것입니다.
             </p>
           </div>

@@ -56,8 +56,8 @@ export function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg">
           회원가입이 완료되었습니다. 로그인 페이지로 이동합니다...
         </div>
       </div>
@@ -65,14 +65,14 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-surface">
       <div className="max-w-md w-full space-y-8 px-4">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-6">
+          <div className="mx-auto w-16 h-16 bg-accent rounded-xl flex items-center justify-center mb-6">
             <span className="text-white font-bold text-2xl">GGS</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">회원가입</h2>
-          <p className="mt-4 text-gray-600">
+          <h2 className="text-3xl font-bold text-primary">회원가입</h2>
+          <p className="mt-4 text-secondary">
             새 계정을 만들어 회의실 예약 서비스를 이용하세요.
           </p>
         </div>
@@ -115,7 +115,7 @@ export function RegisterPage() {
                 disabled={isLoading}
                 className="mt-1"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-secondary mt-1">
                 영문, 숫자, 하이픈(-), 언더스코어(_)만 사용 가능
               </p>
             </div>
@@ -151,7 +151,7 @@ export function RegisterPage() {
                 disabled={isLoading}
                 className="mt-1"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-secondary mt-1">
                 대문자, 소문자, 숫자를 포함해야 합니다
               </p>
             </div>
@@ -185,7 +185,7 @@ export function RegisterPage() {
           <div className="text-center">
             <Link
               to="/login"
-              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+              className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
             >
               이미 계정이 있으신가요? 로그인
             </Link>
