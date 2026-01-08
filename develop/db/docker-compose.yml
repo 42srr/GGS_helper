@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ggs_helper_postgres
+    environment:
+      POSTGRES_DB: ggs_helper
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C --auth-host=trust"
+      TZ: Asia/Seoul
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - ggs_network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ggs_helper']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "log_destination=stderr"
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  ggs_network:
+    driver: bridge
