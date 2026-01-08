@@ -10,13 +10,10 @@ export const Role = {
 export type Role = typeof Role[keyof typeof Role];
 
 interface User {
-  id: number;
+  userId: number;
   email: string;
-  login: string;
-  firstName: string;
-  lastName: string;
-  displayName: string;
-  imageUrl?: string;
+  username: string;
+  name: string;
   role: Role;
 }
 
@@ -27,7 +24,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: () => void;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
   hasRole: (role: Role) => boolean;
@@ -40,7 +37,7 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -157,9 +154,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = () => {
-    // 42 OAuth 로그인 페이지로 리다이렉트
-    window.location.href = `${API_BASE_URL}/auth/42`;
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const { access_token, user } = await response.json();
+
+      // 토큰과 사용자 정보 저장
+      localStorage.setItem('accessToken', access_token);
+      localStorage.setItem('userId', user.userId.toString());
+
+      setAuthState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
