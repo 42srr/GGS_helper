@@ -20,7 +20,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequirePermissions } from '../auth/decorators/roles.decorator';
 import { AdminService } from './admin.service';
-import { Api42ConfigService } from '../api-42/api-42-config.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,7 +27,6 @@ import { Api42ConfigService } from '../api-42/api-42-config.service';
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
-    private readonly api42ConfigService: Api42ConfigService,
   ) {}
 
   @Post('backup/create')
@@ -210,70 +208,6 @@ export class AdminController {
     return {
       message: 'Sample activities created successfully',
       timestamp: new Date().toISOString(),
-    };
-  }
-
-  // 42 API Key 관리
-  @Get('api-keys/42/info')
-  async get42ApiKeyInfo() {
-    return this.api42ConfigService.getConfigInfo();
-  }
-
-  @Post('api-keys/42/set-new')
-  async set42NewApiKey(@Body() body: { secret: string }) {
-    if (!body.secret || body.secret.length < 10) {
-      throw new HttpException('Invalid secret key', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.setNewClientSecret(body.secret);
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 추가되었습니다.',
-      note: 'Dual key 모드가 활성화되었습니다. 현재 키와 새 키 모두 유효합니다.',
-    };
-  }
-
-  @Post('api-keys/42/promote')
-  async promote42ApiKey() {
-    const info = this.api42ConfigService.getConfigInfo();
-    if (!info.newSecretActive) {
-      throw new HttpException('No new secret to promote', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.promoteNewSecret();
-
-    // 서버 자동 재시작 (개발 환경에서만 권장)
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        console.log('🔄 Auto-restarting server to apply new OAuth secret...');
-        process.exit(0); // nodemon/pm2가 자동으로 재시작함
-      }, 1000);
-    }
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 primary로 승격되었습니다.',
-      note: process.env.NODE_ENV === 'development'
-        ? '서버가 자동으로 재시작됩니다...'
-        : '운영 환경에서는 수동으로 서버를 재시작해주세요.',
-      restartRequired: process.env.NODE_ENV !== 'development',
-    };
-  }
-
-  @Post('api-keys/42/remove-new')
-  async remove42NewApiKey() {
-    const info = this.api42ConfigService.getConfigInfo();
-    if (!info.newSecretActive) {
-      throw new HttpException('No new secret to remove', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.removeNewSecret();
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 제거되었습니다.',
-      note: '현재 키만 사용합니다.',
     };
   }
 
