@@ -23,7 +23,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: any) {
-    await this.authService.logout(req.user.userId);
+    // 요청 헤더에서 토큰 추출
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    await this.authService.logout(req.user.userId, token);
     return { message: 'Logged out successfully' };
   }
 

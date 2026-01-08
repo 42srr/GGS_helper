@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { TokenBlacklistModule } from './auth/token-blacklist.module';
 import { RoomModule } from './room/room.module';
 import { ReservationModule } from './reservation/reservation.module';
 import { AdminModule } from './admin/admin.module';
@@ -21,6 +22,7 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
+    TokenBlacklistModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
