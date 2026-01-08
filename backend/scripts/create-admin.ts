@@ -12,7 +12,7 @@ async function createAdminUser() {
     username: 'admin',
     email: 'admin@ggs.helper',
     name: 'Administrator',
-    password: 'Admin123!', // Change this password after first login
+    password: 'Admin1234', // Change this password after first login
   };
 
   try {
@@ -28,6 +28,19 @@ async function createAdminUser() {
         Role.ADMIN,
       );
       console.log('✅ Admin role updated for existing user:', updatedAdmin.name);
+
+      // 비밀번호를 업데이트하기 위해 Repository를 직접 사용
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(adminData.password, 10);
+
+      // DataSource를 통해 직접 업데이트
+      const { DataSource } = require('typeorm');
+      const dataSource = app.get(DataSource);
+      await dataSource.query(
+        'UPDATE users SET user_password = $1 WHERE user_username = $2',
+        [hashedPassword, 'admin']
+      );
+      console.log('✅ Admin password updated to: Admin1234');
 
       await app.close();
       return;

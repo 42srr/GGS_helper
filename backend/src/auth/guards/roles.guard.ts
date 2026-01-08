@@ -52,11 +52,16 @@ export class RolesGuard implements CanActivate {
     if (requiredPermissions) {
       const userPermissions = PERMISSIONS[user.role as Role] || [];
       const hasPermission = requiredPermissions.every((permission) => {
-        // 와일드카드 권한 체크 (예: admin은 모든 권한)
-        if (userPermissions.includes(`${permission.split(':')[0]}:*`)) {
+        // 직접 권한 매칭
+        if (userPermissions.includes(permission)) {
           return true;
         }
-        return userPermissions.includes(permission);
+        // 와일드카드 권한 체크 (예: admin:* 권한이 admin:read를 포함)
+        const [resource] = permission.split(':');
+        if (userPermissions.includes(`${resource}:*`)) {
+          return true;
+        }
+        return false;
       });
 
       if (!hasPermission) {
