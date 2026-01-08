@@ -6,9 +6,9 @@
 본 문서는 42GGS_helper 시스템의 지속적인 운영과 안정성을 보장하기 위한 유지보수 계획을 정의합니다.
 
 ### 1.2 시스템 개요
-- **서비스 명**: 42GGS_helper
+- **서비스 명**: GGS_helper
 - **운영 주체**: GGS (42경산 개발 동아리)
-- **주요 기능**: 스터디룸 예약 관리, 카뎃 대시보드
+- **주요 기능**: 회의실 예약 관리, 사용자 관리, 노쇼/지각 관리
 - **기술 스택**: NestJS (Backend), ReactJS (Frontend), PostgreSQL (Database)
 
 ---
@@ -42,7 +42,6 @@
 - [ ] 데이터베이스 연결 상태 확인
 - [ ] 백업 자동화 실행 여부 확인
 - [ ] 에러 로그 모니터링 (activity_logs 테이블)
-- [ ] 42 API 연동 상태 확인
 
 **도구**:
 - 헬스체크 엔드포인트 모니터링
@@ -59,7 +58,6 @@
 - [ ] 사용자 피드백 검토
 - [ ] 디스크 용량 확인 (데이터베이스, 로그 파일)
 - [ ] 백업 데이터 무결성 테스트
-- [ ] 동아리 활동 데이터 현황 점검
 
 **수행 방법**:
 ```bash
@@ -84,8 +82,6 @@ GET /admin/system/stats
 - [ ] 데이터베이스 성능 최적화 (인덱스 점검, 쿼리 최적화)
 - [ ] 불필요한 로그/백업 파일 정리
 - [ ] 사용자 데이터 정합성 검증
-- [ ] 42 API 키 만료 일정 확인
-- [ ] 클럽 멤버십 데이터 정합성 점검
 
 **수행 방법**:
 ```bash
@@ -113,7 +109,6 @@ POST /admin/backup/create
 - [ ] 서비스 성능 분석 및 개선 사항 도출
 - [ ] 사용자 만족도 조사
 - [ ] 재해 복구 훈련 (Disaster Recovery Drill)
-- [ ] 동아리 활동 보고서 작성
 
 ---
 
@@ -121,22 +116,12 @@ POST /admin/backup/create
 
 ### 4.1 보안 관리
 
-#### 4.1.1 42 API 키 관리
-- **Dual Key 방식** 사용으로 무중단 키 교체 지원
-- **키 교체 절차**:
-  1. 새 Secret 추가: `POST /api42-admin/set-new-secret`
-  2. Dual Key 모드로 운영 (기존 + 새 키 동시 유효)
-  3. 새 키를 Primary로 승격: `POST /api42-admin/promote-secret`
-  4. 기존 키 제거 완료
-
-- **권장 교체 주기**: 6개월마다
-
-#### 4.1.2 JWT 토큰 관리
+#### 4.1.1 JWT 토큰 관리
 - Access Token 만료 시간: 환경변수로 관리
-- Refresh Token 보안 저장 (데이터베이스)
-- 주기적인 Refresh Token 갱신 권장
+- 주기적인 토큰 갱신 권장
+- 비밀번호 해싱: bcrypt 사용
 
-#### 4.1.3 의존성 보안
+#### 4.1.2 의존성 보안
 - **월 1회** `npm audit` 실행
 - Critical/High 등급 취약점 즉시 패치
 - 패치 적용 후 통합 테스트 수행
@@ -166,8 +151,6 @@ GET /admin/backup/download/:id
 - **노쇼/지각 자동 처리**:
   - 지각 3회 → 노쇼 1회 자동 전환 검증
   - 노쇼 발생 시 7일 예약 정지 자동 적용 검증
-- **동아리 멤버 카운트 정합성**:
-  - `clubs.count_member`와 실제 `club_members` 수 주기적 검증
 
 #### 4.2.3 데이터 정리
 - **activity_logs**: 6개월 이상 로그 아카이빙
@@ -180,17 +163,16 @@ GET /admin/backup/download/:id
 
 #### 4.3.1 데이터베이스 인덱스
 - 주요 인덱스 점검:
-  - `users.user_intraid` (UNIQUE)
+  - `users.user_username` (UNIQUE)
+  - `users.user_email` (UNIQUE)
   - `reservations.room_id`, `reservations.user_id`
   - `reservations.reservation_starttime`
-  - `club_members (club_id, user_id)` (UNIQUE)
 
 #### 4.3.2 쿼리 최적화
 - N+1 쿼리 문제 모니터링
 - 슬로우 쿼리 로그 분석 (주간)
 
 #### 4.3.3 캐싱 전략
-- 42 API 데이터 캐싱 (현재 구현됨)
 - 자주 조회되는 통계 데이터 캐싱 고려
 
 ---
@@ -202,7 +184,7 @@ GET /admin/backup/download/:id
 | 레벨 | 정의 | 대응 시간 | 예시 |
 |------|------|----------|------|
 | Critical | 서비스 전체 중단 | 즉시 (1시간 이내) | 데이터베이스 장애, 백엔드 서버 다운 |
-| High | 주요 기능 장애 | 4시간 이내 | 예약 생성 불가, 42 OAuth 실패 |
+| High | 주요 기능 장애 | 4시간 이내 | 예약 생성 불가, 로그인 실패 |
 | Medium | 일부 기능 장애 | 24시간 이내 | 통계 데이터 오류, Excel 내보내기 실패 |
 | Low | 사소한 버그 | 1주일 이내 | UI 오류, 텍스트 오탈자 |
 
@@ -248,16 +230,12 @@ GET /admin/backup/download/:id
    ```
 3. 데이터 무결성 검증
 
-#### 시나리오 2: 42 API 인증 실패
-**증상**: 로그인 불가, 사용자 데이터 동기화 실패
+#### 시나리오 2: 인증 실패
+**증상**: 로그인 불가, JWT 토큰 오류
 **대응**:
-1. 42 API 키 상태 확인
-   ```bash
-   GET /admin/api-keys/42/info
-   POST /admin/system/test-api-keys
-   ```
-2. Dual Key 방식으로 새 키 추가
-3. 키 교체 후 재시작 (개발 환경 자동)
+1. JWT 시크릿 환경 변수 확인
+2. 데이터베이스 사용자 테이블 상태 확인
+3. 백엔드 서비스 재시작
 
 #### 시나리오 3: 프론트엔드 빌드 실패
 **증상**: 웹 페이지 로드 불가
@@ -447,10 +425,9 @@ GET /admin/backup/download/:id
 ```markdown
 ## 일일 점검 - YYYY-MM-DD
 - [ ] Frontend 서비스 정상 동작 확인 (http://localhost:5173)
-- [ ] Backend API 정상 동작 확인 (http://localhost:4000/api)
+- [ ] Backend API 정상 동작 확인 (http://localhost:3001)
 - [ ] 데이터베이스 연결 확인 (docker ps)
 - [ ] 에러 로그 확인 (GET /admin/activities/recent)
-- [ ] 42 API 연동 확인 (POST /admin/system/test-api-keys)
 - [ ] 백업 자동화 확인
 ```
 
@@ -462,7 +439,6 @@ GET /admin/backup/download/:id
 - [ ] 사용자 피드백 검토 (슬랙/이슈 트래커)
 - [ ] 디스크 용량 확인 (df -h)
 - [ ] 백업 무결성 테스트 (백업 다운로드 및 검증)
-- [ ] 동아리 데이터 현황 점검 (GET /clubs)
 ```
 
 ### 14.3 월간 점검 체크리스트
@@ -472,8 +448,7 @@ GET /admin/backup/download/:id
 - [ ] 보안 취약점 스캔 (npm audit)
 - [ ] 데이터베이스 최적화 (인덱스/쿼리)
 - [ ] 로그/백업 정리 (6개월 이상)
-- [ ] 데이터 정합성 검증 (clubs.count_member)
-- [ ] 42 API 키 만료 확인
+- [ ] 데이터 정합성 검증
 ```
 
 ---
@@ -482,10 +457,9 @@ GET /admin/backup/download/:id
 
 ### A. 환경 변수 관리
 주요 환경 변수는 `.env.example` 파일 참조
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `FT_CLIENT_ID`, `FT_CLIENT_SECRET`
-- `FRONTEND_URL`, `BACKEND_URL`
+- `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`
+- `JWT_SECRET`, `JWT_EXPIRES_IN`
+- `FRONTEND_URL`
 
 ### B. 유용한 명령어 모음
 

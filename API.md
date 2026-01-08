@@ -31,28 +31,67 @@ Authorization: Bearer <access_token>
 
 ## 1. 인증 (Auth)
 
-### 1.1 42 OAuth 로그인
+### 1.1 회원가입
 ```
-GET /auth/42
+POST /auth/register
 ```
-42 OAuth 인증 페이지로 리다이렉트
 
-**Response**: 302 Redirect to 42 OAuth
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "username": "username123",
+  "name": "홍길동",
+  "password": "SecurePass123"
+}
+```
+
+**Validation**:
+- username: 3-50자, 영문/숫자/하이픈/언더스코어만 허용
+- password: 8자 이상, 대소문자/숫자 포함 필수
+- email: 유효한 이메일 형식
+
+**Response**:
+```json
+{
+  "access_token": "jwt_token_here",
+  "user": {
+    "userId": 1,
+    "email": "user@example.com",
+    "username": "username123",
+    "name": "홍길동",
+    "role": "student"
+  }
+}
+```
 
 ---
 
-### 1.2 42 OAuth Callback
+### 1.2 로그인
 ```
-GET /auth/42/callback?code={code}
+POST /auth/login
 ```
-42 OAuth 콜백 처리
 
-**Query Parameters**:
-- `code` (string, required): OAuth authorization code
-
-**Response**: 302 Redirect to frontend with tokens
+**Request Body**:
+```json
+{
+  "username": "username123",
+  "password": "SecurePass123"
+}
 ```
-{frontend_url}/auth/callback?access_token={token}&refresh_token={token}&user={user_json}
+
+**Response**:
+```json
+{
+  "access_token": "jwt_token_here",
+  "user": {
+    "userId": 1,
+    "email": "user@example.com",
+    "username": "username123",
+    "name": "홍길동",
+    "role": "student"
+  }
+}
 ```
 
 ---
@@ -106,10 +145,10 @@ GET /auth/me
 ```json
 {
   "userId": 1,
-  "intraId": "yutsong",
-  "name": "유성태",
-  "role": "student",
-  ...
+  "email": "user@example.com",
+  "username": "username123",
+  "name": "홍길동",
+  "role": "student"
 }
 ```
 
@@ -134,11 +173,12 @@ GET /users?role=admin
 [
   {
     "userId": 1,
-    "intraId": "yutsong",
-    "name": "유성태",
+    "email": "user@example.com",
+    "username": "username123",
+    "name": "홍길동",
+    "phone": "010-1234-5678",
     "role": "student",
     "isAvailable": true,
-    "profileImgUrl": "...",
     "noShowCount": 0,
     "lateCount": 0,
     "isReservationBanned": false,
@@ -165,7 +205,7 @@ PATCH /users/:id
 ```json
 {
   "name": "새 이름",
-  "profileImgUrl": "...",
+  "phone": "010-9876-5432",
   "isAvailable": true
 }
 ```
@@ -292,7 +332,7 @@ POST /users/stats/refresh
 
 **Auth Required**: Yes (본인만)
 
-42 API에서 최신 데이터를 강제로 가져와서 업데이트
+최신 데이터를 강제로 가져와서 업데이트
 
 ---
 
@@ -710,256 +750,9 @@ PATCH /reservations/admin/:id/status
 
 ---
 
-## 5. 동아리 (Clubs)
+## 5. 관리자 (Admin)
 
-### 5.1 동아리 생성
-```
-POST /clubs
-```
-
-**Auth Required**: Yes
-**Permission**: `club:create`
-
-**Request Body**:
-```json
-{
-  "name": "알고리즘 동아리",
-  "leaderId": 1,
-  "description": "알고리즘 스터디 동아리"
-}
-```
-
-**Response**:
-```json
-{
-  "id": 1,
-  "name": "알고리즘 동아리",
-  "leaderId": 1,
-  "description": "알고리즘 스터디 동아리",
-  "countMember": 1,
-  "createdAt": "2025-12-01T00:00:00Z",
-  "updatedAt": "2025-12-01T00:00:00Z"
-}
-```
-
-**Note**: 리더는 자동으로 멤버로 추가됩니다.
-
----
-
-### 5.2 동아리 목록 조회
-```
-GET /clubs
-```
-
-**Auth Required**: Yes
-**Permission**: `club:read`
-
-**Response**:
-```json
-[
-  {
-    "id": 1,
-    "name": "알고리즘 동아리",
-    "leaderId": 1,
-    "description": "알고리즘 스터디 동아리",
-    "countMember": 5,
-    "leader": {
-      "userId": 1,
-      "name": "유성태",
-      "intraId": "yutsong"
-    },
-    "createdAt": "2025-12-01T00:00:00Z"
-  }
-]
-```
-
----
-
-### 5.3 동아리 상세 조회
-```
-GET /clubs/:id
-```
-
-**Auth Required**: Yes
-**Permission**: `club:read`
-
-**Response**:
-```json
-{
-  "id": 1,
-  "name": "알고리즘 동아리",
-  "leaderId": 1,
-  "description": "...",
-  "countMember": 5,
-  "leader": {...},
-  "members": [
-    {
-      "id": 1,
-      "clubId": 1,
-      "userId": 1,
-      "role": "leader",
-      "status": "active",
-      "user": {
-        "userId": 1,
-        "name": "유성태",
-        "intraId": "yutsong"
-      }
-    }
-  ]
-}
-```
-
----
-
-### 5.4 동아리 정보 수정
-```
-PATCH /clubs/:id
-```
-
-**Auth Required**: Yes
-**Permission**: `club:update`
-
-**Request Body**:
-```json
-{
-  "name": "새 동아리 이름",
-  "leaderId": 2,
-  "description": "새 설명"
-}
-```
-
-**Note**: 리더 변경 시 기존 리더는 일반 멤버로, 새 리더는 리더 역할로 자동 변경됩니다.
-
----
-
-### 5.5 동아리 삭제
-```
-DELETE /clubs/:id
-```
-
-**Auth Required**: Yes
-**Permission**: `club:delete`
-
-**Note**: 멤버도 함께 삭제됩니다.
-
----
-
-### 5.6 동아리 가입
-```
-POST /clubs/join
-```
-
-**Auth Required**: Yes
-**Permission**: `club:join`
-
-**Request Body**:
-```json
-{
-  "clubId": 1,
-  "userId": 2
-}
-```
-
-**Response**:
-```json
-{
-  "id": 2,
-  "clubId": 1,
-  "userId": 2,
-  "role": "member",
-  "status": "active",
-  "createdAt": "2025-12-01T00:00:00Z"
-}
-```
-
-**Error**: 이미 가입된 회원인 경우 409 Conflict
-
----
-
-### 5.7 동아리 멤버 목록 조회
-```
-GET /clubs/:id/members
-```
-
-**Auth Required**: Yes
-**Permission**: `club:read`
-
-**Response**:
-```json
-[
-  {
-    "id": 1,
-    "clubId": 1,
-    "userId": 1,
-    "role": "leader",
-    "status": "active",
-    "user": {
-      "userId": 1,
-      "name": "유성태",
-      "intraId": "yutsong",
-      "profileImgUrl": "..."
-    },
-    "createdAt": "2025-12-01T00:00:00Z"
-  }
-]
-```
-
----
-
-### 5.8 동아리 멤버 상태 변경
-```
-PATCH /clubs/:clubId/members/:userId/status
-```
-
-**Auth Required**: Yes
-**Permission**: `club:update`
-
-**Path Parameters**:
-- `clubId` (number): 동아리 ID
-- `userId` (number): 사용자 ID
-
-**Request Body**:
-```json
-{
-  "status": "freeze"
-}
-```
-
-**멤버 상태 값**:
-- `active`: 활동중
-- `freeze`: 휴면
-- `work`: 활동중 (작업)
-- `inactive`: 비활성
-
----
-
-### 5.9 동아리 멤버 역할 변경
-```
-PATCH /clubs/:clubId/members/:userId/role
-```
-
-**Auth Required**: Yes
-**Permission**: `club:update`
-
-**Request Body**:
-```json
-{
-  "role": "staff"
-}
-```
-
-**멤버 역할 값**:
-- `member`: 일반 멤버
-- `leader`: 동아리장
-- `staff`: 운영진
-
-**Note**: 리더로 변경 시 기존 리더는 자동으로 일반 멤버로 강등되고, 동아리의 leaderId도 업데이트됩니다.
-
----
-
-## 6. 관리자 (Admin)
-
-### 6.1 백업 생성
+### 5.1 백업 생성
 ```
 POST /admin/backup/create
 ```
@@ -978,7 +771,7 @@ POST /admin/backup/create
 
 ---
 
-### 6.2 백업 목록 조회
+### 5.2 백업 목록 조회
 ```
 GET /admin/backup/list
 ```
@@ -988,7 +781,7 @@ GET /admin/backup/list
 
 ---
 
-### 6.3 백업 다운로드
+### 5.3 백업 다운로드
 ```
 GET /admin/backup/download/:id
 ```
@@ -1000,7 +793,7 @@ GET /admin/backup/download/:id
 
 ---
 
-### 6.4 백업 삭제
+### 5.4 백업 삭제
 ```
 DELETE /admin/backup/:id
 ```
@@ -1010,7 +803,7 @@ DELETE /admin/backup/:id
 
 ---
 
-### 6.5 백업 복원
+### 5.5 백업 복원
 ```
 POST /admin/backup/restore
 ```
@@ -1027,7 +820,7 @@ POST /admin/backup/restore
 
 ---
 
-### 6.6 시스템 통계
+### 5.6 시스템 통계
 ```
 GET /admin/system/stats
 ```
@@ -1049,7 +842,7 @@ GET /admin/system/stats
 
 ---
 
-### 6.7 시스템 설정 조회
+### 5.7 시스템 설정 조회
 ```
 GET /admin/settings
 ```
@@ -1059,7 +852,7 @@ GET /admin/settings
 
 ---
 
-### 6.8 시스템 설정 수정
+### 5.8 시스템 설정 수정
 ```
 PUT /admin/settings
 ```
@@ -1078,7 +871,7 @@ PUT /admin/settings
 
 ---
 
-### 6.9 유지보수 모드 토글
+### 5.9 유지보수 모드 토글
 ```
 POST /admin/system/maintenance
 ```
@@ -1095,7 +888,7 @@ POST /admin/system/maintenance
 
 ---
 
-### 6.10 데이터베이스 초기화
+### 5.10 데이터베이스 초기화
 ```
 POST /admin/system/database-reset
 ```
@@ -1107,7 +900,7 @@ POST /admin/system/database-reset
 
 ---
 
-### 6.11 로그 삭제
+### 5.11 로그 삭제
 ```
 POST /admin/system/clear-logs
 ```
@@ -1117,7 +910,7 @@ POST /admin/system/clear-logs
 
 ---
 
-### 6.12 API 키 테스트
+### 5.12 API 키 테스트
 ```
 POST /admin/system/test-api-keys
 ```
@@ -1125,11 +918,11 @@ POST /admin/system/test-api-keys
 **Auth Required**: Yes
 **Permission**: `admin:*`
 
-42 API 키가 정상적으로 작동하는지 테스트
+API 키가 정상적으로 작동하는지 테스트
 
 ---
 
-### 6.13 통계 조회
+### 5.13 통계 조회
 ```
 GET /admin/statistics?period=30d
 ```
@@ -1142,7 +935,7 @@ GET /admin/statistics?period=30d
 
 ---
 
-### 6.14 통계 Excel 내보내기
+### 5.14 통계 Excel 내보내기
 ```
 GET /admin/statistics/export
 ```
@@ -1154,7 +947,7 @@ GET /admin/statistics/export
 
 ---
 
-### 6.15 최근 활동 로그 조회
+### 5.15 최근 활동 로그 조회
 ```
 GET /admin/activities/recent?limit=10
 ```
@@ -1188,144 +981,6 @@ GET /admin/activities/recent?limit=10
 - `settings_updated`
 - `system_maintenance`
 - `excel_upload`
-- `club_approved`, `club_rejected`, `club_created`, `club_updated`, `club_deleted`
-
----
-
-### 6.16 42 API 키 정보 조회
-```
-GET /admin/api-keys/42/info
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-**Response**:
-```json
-{
-  "clientId": "u-s4...",
-  "currentSecretPrefix": "s-s4t2...",
-  "newSecretActive": false,
-  "newSecretPrefix": null,
-  "dualKeyMode": false
-}
-```
-
----
-
-### 6.17 42 API 새 키 추가
-```
-POST /admin/api-keys/42/set-new
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-**Request Body**:
-```json
-{
-  "secret": "s-s4t2new..."
-}
-```
-
-Dual key 모드 활성화 (현재 키와 새 키 모두 유효)
-
----
-
-### 6.18 42 API 새 키를 Primary로 승격
-```
-POST /admin/api-keys/42/promote
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-새 키를 primary로 승격하고 이전 키 제거
-
-**Note**: 개발 환경에서는 자동으로 서버 재시작
-
----
-
-### 6.19 42 API 새 키 제거
-```
-POST /admin/api-keys/42/remove-new
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-새 키를 제거하고 현재 키만 사용
-
----
-
-## 7. 42 API 관리 (API42 Admin)
-
-### 7.1 42 API 설정 정보 조회
-```
-GET /api42-admin/config-info
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
----
-
-### 7.2 새 Secret 키 추가
-```
-POST /api42-admin/set-new-secret
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-**Request Body**:
-```json
-{
-  "secret": "s-s4t2new..."
-}
-```
-
----
-
-### 7.3 새 Secret을 Primary로 승격
-```
-POST /api42-admin/promote-secret
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
----
-
-### 7.4 새 Secret 제거
-```
-POST /api42-admin/remove-new-secret
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
----
-
-### 7.5 설정 파일 다시 로드
-```
-POST /api42-admin/reload-config
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
----
-
-### 7.6 사용 가이드 조회
-```
-GET /api42-admin/help
-```
-
-**Auth Required**: Yes
-**Permission**: `admin:*`
-
-Dual Key 방식의 42 API 키 관리 가이드 반환
 
 ---
 
@@ -1358,7 +1013,6 @@ Dual Key 방식의 42 API 키 관리 가이드 반환
 - `user:read`, `user:update`, `user:role:update`, `user:export`
 - `room:create`, `room:read`, `room:update`, `room:delete`
 - `reservation:create`, `reservation:read`, `reservation:update`, `reservation:delete`
-- `club:create`, `club:read`, `club:update`, `club:delete`, `club:join`
 - `admin:*`: 모든 관리자 권한
 
 ### 데코레이터

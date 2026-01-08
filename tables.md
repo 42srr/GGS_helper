@@ -7,16 +7,16 @@
 | Column                | Type      | Nullable | Default           | Description                         |
 | --------------------- | --------- | -------- | ----------------- | ----------------------------------- |
 | user_id               | integer   | NO       | AUTO_INCREMENT    | 사용자 고유 ID (Primary Key)        |
-| user_intraid          | varchar   | NO       | -                 | 42 Intra ID (Unique)                |
+| user_username         | varchar   | NO       | -                 | 사용자명 (Unique)                   |
+| user_email            | varchar   | NO       | -                 | 이메일 (Unique)                     |
 | user_name             | varchar   | NO       | -                 | 사용자 이름                         |
+| user_password         | varchar   | NO       | -                 | 비밀번호 (bcrypt 해시)              |
+| user_phone            | varchar   | YES      | -                 | 전화번호                            |
 | user_isavailable      | boolean   | NO       | true              | 사용자 활성화 상태                  |
-| user_profileimgurl    | varchar   | NO       | ''                | 프로필 이미지 URL                   |
 | user_role             | enum      | NO       | 'student'         | 사용자 역할 (student, staff, admin) |
 | user_createdat        | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                           |
 | user_updatedat        | timestamp | NO       | CURRENT_TIMESTAMP | 수정 일시                           |
-| user_refreshtoken     | varchar   | NO       | ''                | Refresh Token                       |
 | user_lastloginat      | timestamp | YES      | -                 | 마지막 로그인 일시                  |
-| user_grade            | varchar   | NO       | 'Cadet'           | 사용자 등급                         |
 | no_show_count         | integer   | NO       | 0                 | 노쇼 횟수                           |
 | last_no_show_at       | timestamp | YES      | -                 | 마지막 노쇼 발생 일시               |
 | late_count            | integer   | NO       | 0                 | 지각 횟수                           |
@@ -25,36 +25,11 @@
 
 **Relationships:**
 
-- OneToOne: info (cascade)
 - OneToMany: reservations
-- OneToMany: club_members
-- OneToMany: clubs (as leader via leader_id)
 
 ---
 
-## 2. info
-
-사용자의 42 관련 상세 정보를 관리하는 테이블
-
-| Column              | Type         | Nullable | Default        | Description                |
-| ------------------- | ------------ | -------- | -------------- | -------------------------- |
-| info_id             | integer      | NO       | AUTO_INCREMENT | 정보 고유 ID (Primary Key) |
-| user_id             | integer      | NO       | -              | 사용자 ID (Foreign Key)    |
-| info_studytime      | decimal(8,2) | NO       | 0              | 학습 시간                  |
-| info_level          | decimal(8,2) | NO       | 0              | 레벨                       |
-| info_wallet         | integer      | NO       | 0              | 지갑                       |
-| info_evalpoint      | integer      | NO       | 0              | 평가 포인트                |
-| info_activeproject  | text         | NO       | '[]'           | 활성 프로젝트 (JSON 형식)  |
-| info_coalition      | varchar      | NO       | ''             | 연합 정보                  |
-| info_lastupdateedat | timestamp    | YES      | -              | 마지막 업데이트 일시       |
-
-**Relationships:**
-
-- OneToOne: user (user_id)
-
----
-
-## 3. room
+## 2. room
 
 회의실/공간 정보를 관리하는 테이블
 
@@ -77,7 +52,7 @@
 
 ---
 
-## 4. reservation
+## 3. reservation
 
 예약 정보를 관리하는 테이블
 
@@ -108,7 +83,7 @@
 
 ---
 
-## 5. activity_logs
+## 4. activity_logs
 
 시스템 활동 로그를 기록하는 테이블
 
@@ -136,11 +111,6 @@
 - SETTINGS_UPDATED
 - SYSTEM_MAINTENANCE
 - EXCEL_UPLOAD
-- CLUB_APPROVED
-- CLUB_REJECTED
-- CLUB_CREATED
-- CLUB_UPDATED
-- CLUB_DELETED
 
 **Relationships:**
 
@@ -148,7 +118,7 @@
 
 ---
 
-## 6. system_settings
+## 5. system_settings
 
 시스템 설정 정보를 관리하는 테이블
 
@@ -163,64 +133,12 @@
 
 ---
 
-## 7. clubs
-
-동아리 정보를 관리하는 테이블
-
-| Column        | Type      | Nullable | Default           | Description                |
-| ------------- | --------- | -------- | ----------------- | -------------------------- |
-| id            | integer   | NO       | AUTO_INCREMENT    | 동아리 고유 ID (Primary Key) |
-| name          | varchar   | NO       | -                 | 동아리 명                   |
-| leader_id     | integer   | NO       | -                 | 동아리장 ID (Foreign Key)   |
-| description   | text      | YES      | -                 | 동아리 설명                 |
-| count_member  | integer   | YES      | 0                 | 동아리 회원 수 (캐시)        |
-| createdAt     | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                   |
-| updatedAt     | timestamp | NO       | CURRENT_TIMESTAMP | 수정 일시                   |
-
-**Relationships:**
-- ManyToOne: user (leader_id)
-- OneToMany: club_members
-
----
-
-## 8. club_members
-
-동아리원 정보를 관리하는 테이블
-
-| Column    | Type      | Nullable | Default           | Description                                            |
-| --------- | --------- | -------- | ----------------- | ------------------------------------------------------ |
-| id        | integer   | NO       | AUTO_INCREMENT    | 동아리원 고유 ID (Primary Key)                          |
-| club_id   | integer   | NO       | -                 | 동아리 ID (Foreign Key)                                |
-| user_id   | integer   | NO       | -                 | 사용자 ID (Foreign Key)                                |
-| role      | enum      | NO       | 'member'          | 동아리 회원 역할 (member, leader, staff)                |
-| status    | enum      | NO       | 'active'          | 동아리 회원 상태 (freeze, active, work, inactive)       |
-| createdAt | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                                              |
-| updatedAt | timestamp | NO       | CURRENT_TIMESTAMP | 수정 일시                                              |
-
-**Constraints:**
-- Unique: (club_id, user_id) - 한 동아리에 동일 사용자 중복 가입 방지
-
-**Relationships:**
-- ManyToOne: club (club_id)
-- ManyToOne: user (user_id)
-
----
-
 ## ER Diagram (Text)
 
 ```
 users (1) ----< (M) reservations (M) >---- (1) room
-  |
-  | (1:1)
-  |
-info
 
 users (1) ----< (M) activity_logs
-
-users (1) ----< (M) club_members (M) >---- (1) clubs
-  |                                           |
-  | (leader)                                  |
-  +-------------------------------------------+
 ```
 
 ## Key Features
