@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { User } from '../user/entities/user.entity';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,85 +15,80 @@ export class AuthService {
     private userService: UserService,
   ) {}
 
-  async validateOAuthLogin(profile: any, refreshToken: string): Promise<any> {
-    if (!profile || !profile._json) {
-      throw new Error('Invalid profile data received from 42 API');
-    }
-
-    const user = await this.userService.findOrCreate(profile._json);
-
-    if (!refreshToken) {
-      throw new Error('No refresh token provided by 42 API');
-    }
-
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.userService.updateRefreshToken(user.userId, hashedRefreshToken);
-
-    const payload = {
-      intraId: user.intraId,
-      sub: user.userId,
-      role: user.role,
-    };
-    const access_token = this.jwtService.sign(payload);
-
-    return {
-      access_token,
-      refresh_token: refreshToken,
-      user: {
-        userId: user.userId,
-        intraId: user.intraId,
-        name: user.name,
-        profileImgUrl: user.profileImgUrl,
-        role: user.role,
-        grade: user.grade,
-      },
-    };
+  async logout(userId: number): Promise<void> {
+    // Logout logic (if needed, e.g., token blacklist)
   }
 
-  async generateTokens(
-    user: User,
-  ): Promise<{ access_token: string; refresh_token: string }> {
-    const payload = {
-      intraId: user.intraId,
-      sub: user.userId,
-      role: user.role,
-    };
-    const access_token = this.jwtService.sign(payload);
-    const refresh_token = this.jwtService.sign(payload, {
-      expiresIn: '30d',
+  // 새로운 인증 시스템 메서드
+  async register(registerDto: RegisterDto): Promise<{ message: string }> {
+    const { email, password, username, name } = registerDto;
+
+    // username 중복 체크
+    const existingUser = await this.userService.findByUsername(username);
+    if (existingUser) {
+      throw new ConflictException('Username already exists');
+    }
+
+    // 이메일 중복 체크
+    const existingEmail = await this.userService.findByEmail(email);
+    if (existingEmail) {
+      throw new ConflictException('Email already exists');
+    }
+
+    // 비밀번호 해싱
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 사용자 생성
+    await this.userService.create({
+      email,
+      username,
+      name,
+      password: hashedPassword,
     });
 
-    const hashedRefreshToken = await bcrypt.hash(refresh_token, 10);
-    await this.userService.updateRefreshToken(user.userId, hashedRefreshToken);
-
-    return { access_token, refresh_token };
+    return { message: 'Registration successful. You can now login.' };
   }
 
-  async refreshToken(
-    userId: number,
-    refreshToken: string,
-  ): Promise<{ access_token: string }> {
-    const user = await this.userService.findOne(userId);
-    if (!user || !user.refreshToken) {
-      throw new Error('User not found or no refresh token');
-    }
-
-    const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
-    if (!isValid) {
-      throw new Error('Invalid refresh token');
-    }
-
-    const payload = {
-      intraId: user.intraId,
-      sub: user.userId,
-      role: user.role,
+  async login(loginDto: LoginDto): Promise<{
+    access_token: string;
+    user: {
+      userId: number;
+      email: string;
+      username: string;
+      name: string;
+      role: string;
     };
-    const access_token = this.jwtService.sign(payload);
+  }> {
+    const { username, password } = loginDto;
 
-    return { access_token };
-  }
+    // username으로 사용자 조회
+    const user = await this.userService.findByUsername(username);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-  async logout(userId: number): Promise<void> {
-    await this.userService.clearRefreshToken(userId);
+    // 비밀번호 검증
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // JWT 생성
+    const payload = { userId: user.userId, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+
+    // 마지막 로그인 시간 업데이트
+    await this.userService.updateLastLogin(user.userId);
+
+    return {
+      access_token: accessToken,
+      user: {
+        userId: user.userId,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+      },
+    };
   }
 }
