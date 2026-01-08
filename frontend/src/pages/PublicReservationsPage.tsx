@@ -82,7 +82,7 @@ export function PublicReservationsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">42 ERP</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">GGS Helper</h1>
               <p className="text-xs sm:text-sm text-gray-600">회의실 예약 시스템</p>
             </div>
             <Button onClick={handleLogin} className="gap-1 sm:gap-2 text-sm sm:text-base px-3 sm:px-4 h-8 sm:h-9">
