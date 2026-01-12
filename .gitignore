@@ -185,6 +185,8 @@ Icon
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+nul
+**/nul
 
 # Linux
 *~
@@ -203,3 +205,5 @@ Desktop.ini
 *.ntvs*
 *.njsproj
 *.sln
+
+nul
