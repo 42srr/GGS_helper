@@ -8,24 +8,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import type { Reservation } from '@/types/calendar';
 
 const API_BASE_URL = 'http://localhost:3001';
 
-interface Reservation {
-  reservationId: number;
-  roomId: number;
-  roomName?: string;
-  userId: number;
-  userName?: string;
-  title: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  status?: 'confirmed' | 'pending' | 'cancelled';
-  createdAt?: Date;
+// Extended Reservation type with no-show fields
+type ExtendedReservation = Reservation & {
   isNoShow?: boolean;
   noShowReportCount?: number;
-}
+};
 
 interface PublicReservationDetailModalProps {
   reservation: Reservation | null;
@@ -43,6 +34,9 @@ export function PublicReservationDetailModal({
   const [reportError, setReportError] = useState<string | null>(null);
 
   if (!reservation) return null;
+
+  // Type assertion for extended reservation with no-show fields
+  const extReservation = reservation as ExtendedReservation;
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('ko-KR', {
@@ -116,7 +110,7 @@ export function PublicReservationDetailModal({
   const canReportNoShow = () => {
     if (!reservation) return false;
     const now = new Date();
-    return reservation.startTime <= now && !reservation.isNoShow;
+    return reservation.startTime <= now && !extReservation.isNoShow;
   };
 
   return (
@@ -143,14 +137,14 @@ export function PublicReservationDetailModal({
           </div>
 
           {/* 예약자 정보 */}
-          {reservation.userName && (
+          {reservation.user?.name && (
             <div className="flex items-center space-x-3 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="bg-blue-100 p-2 rounded-full">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">예약자</p>
-                <p className="font-medium text-gray-900">{reservation.userName}</p>
+                <p className="font-medium text-gray-900">{reservation.user.name}</p>
               </div>
             </div>
           )}
@@ -184,7 +178,7 @@ export function PublicReservationDetailModal({
               </div>
             </div>
 
-            {reservation.roomName && (
+            {reservation.room?.name && (
               <div className="flex items-start space-x-3">
                 <div className="bg-white p-2 rounded-full">
                   <MapPin className="w-5 h-5 text-gray-600" />
@@ -192,7 +186,7 @@ export function PublicReservationDetailModal({
                 <div>
                   <p className="text-sm text-gray-600">회의실</p>
                   <p className="font-medium text-gray-900 text-sm sm:text-base">
-                    {reservation.roomName}
+                    {reservation.room.name}
                   </p>
                 </div>
               </div>
@@ -200,15 +194,15 @@ export function PublicReservationDetailModal({
           </div>
 
           {/* 노쇼 상태 표시 */}
-          {reservation.isNoShow && (
+          {extReservation.isNoShow && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
               <div className="flex items-center gap-2 text-red-800">
                 <AlertTriangle className="w-5 h-5" />
                 <span className="font-semibold">노쇼 신고됨</span>
               </div>
-              {reservation.noShowReportCount && reservation.noShowReportCount > 1 && (
+              {extReservation.noShowReportCount && extReservation.noShowReportCount > 1 && (
                 <p className="text-sm text-red-600 mt-1">
-                  신고 횟수: {reservation.noShowReportCount}회
+                  신고 횟수: {extReservation.noShowReportCount}회
                 </p>
               )}
             </div>

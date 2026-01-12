@@ -428,7 +428,34 @@ export function MyReservationsPage() {
       {/* 예약 상세 모달 */}
       {selectedReservation && (
         <ReservationDetailModal
-          reservation={selectedReservation}
+          reservation={{
+            reservationId: selectedReservation.reservationId,
+            roomId: selectedReservation.roomId,
+            userId: selectedReservation.userId,
+            title: selectedReservation.title,
+            description: selectedReservation.description,
+            startTime: new Date(selectedReservation.startTime),
+            endTime: new Date(selectedReservation.endTime),
+            status: selectedReservation.status as 'confirmed' | 'pending' | 'cancelled' | 'in_progress' | undefined,
+            room: {
+              roomId: selectedReservation.room.roomId,
+              name: selectedReservation.room.name,
+              location: selectedReservation.room.location,
+              capacity: 0, // Not available in this context
+              isAvailable: true,
+            },
+            user: {
+              userId: selectedReservation.user.userId,
+              name: selectedReservation.user.login,
+            }
+          }}
+          room={{
+            roomId: selectedReservation.room.roomId,
+            name: selectedReservation.room.name,
+            location: selectedReservation.room.location,
+            capacity: 0,
+            isAvailable: true,
+          }}
           isOpen={!!selectedReservation}
           onClose={() => {
             setSelectedReservation(null);

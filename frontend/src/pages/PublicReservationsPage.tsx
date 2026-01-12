@@ -4,23 +4,10 @@ import { Calendar } from '@/components/calendar/Calendar';
 import { PublicReservationDetailModal } from '@/components/reservations/PublicReservationDetailModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogIn, Clock, Users, CheckCircle } from 'lucide-react';
+import { LogIn } from 'lucide-react';
+import type { Reservation } from '@/types/calendar';
 
 const API_BASE_URL = 'http://localhost:3001';
-
-interface Reservation {
-  reservationId: number;
-  roomId: number;
-  roomName?: string;
-  userId: number;
-  userName?: string;
-  title: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  status?: 'confirmed' | 'pending' | 'cancelled';
-  createdAt?: Date;
-}
 
 export function PublicReservationsPage() {
   const navigate = useNavigate();
@@ -125,87 +112,6 @@ export function PublicReservationsPage() {
           )}
         </section>
 
-        {/* Guidelines Section */}
-        <section className="grid md:grid-cols-2 gap-4 sm:gap-8">
-          {/* Meeting Room Guidelines */}
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <h3 className="text-lg sm:text-xl font-bold text-primary mb-3 sm:mb-4 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-                회의실 이용 수칙
-              </h3>
-              <ul className="space-y-2 sm:space-y-3 text-sm sm:text-base text-secondary">
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>예약 시간을 엄수해 주세요. 늦을 경우 예약이 취소될 수 있습니다.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>회의실 사용 후 정리정돈을 부탁드립니다.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>예약 취소는 최소 1시간 전에 해주세요.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>다른 사용자를 위해 소음에 주의해 주세요.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>회의실 내 음식물 반입을 자제해 주세요.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent font-bold mt-0.5 sm:mt-1">•</span>
-                  <span>장비 사용 시 주의해서 다뤄주세요.</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Login Information */}
-          <Card className="bg-accent/5 border-2 border-accent/20">
-            <CardContent className="p-4 sm:p-6">
-              <h3 className="text-lg sm:text-xl font-bold text-primary mb-3 sm:mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-                회의실 예약하기
-              </h3>
-              <div className="space-y-3 sm:space-y-4">
-                <p className="text-sm sm:text-base text-secondary">
-                  42 계정으로 로그인하면 회의실을 예약하고 관리할 수 있습니다.
-                </p>
-
-                <div className="bg-white rounded-lg p-3 sm:p-4 space-y-2 border border-line">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-secondary">
-                    <Clock className="w-4 h-4 text-accent flex-shrink-0" />
-                    <span>실시간 예약 현황 확인</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-secondary">
-                    <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" />
-                    <span>간편한 예약 생성 및 관리</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-secondary">
-                    <Users className="w-4 h-4 text-accent flex-shrink-0" />
-                    <span>내 예약 내역 조회</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleLogin}
-                  className="w-full gap-2 py-5 sm:py-6 text-sm sm:text-base"
-                  size="lg"
-                >
-                  <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
-                  42 계정으로 로그인
-                </Button>
-
-                <p className="text-xs text-secondary text-center">
-                  42 서울 학생 및 스태프만 이용 가능합니다
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
       </main>
 
       {/* Footer */}

@@ -17,7 +17,7 @@ export function Header() {
   return (
     <header className="border-b border-line bg-primary">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
+        <Link to="/reservations" className="flex items-center space-x-2">
           <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
           <span className="text-xl font-bold text-white">룸잇</span>
         </Link>
