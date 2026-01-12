@@ -63,7 +63,26 @@ export class AdminController {
 
   @Get('backup/list')
   async getBackupList() {
-    return await this.adminService.getBackupList();
+    const backups = await this.adminService.getBackupList();
+    const stats = await this.adminService.getBackupStats();
+    return {
+      backups,
+      ...stats,
+    };
+  }
+
+  @Get('backup/schedule')
+  async getBackupSchedule() {
+    return this.adminService.getBackupScheduleStatus();
+  }
+
+  @Put('backup/schedule')
+  async updateBackupSchedule(@Body() body: { enabled: boolean; retentionDays: number; backupHour?: number }) {
+    await this.adminService.updateBackupSchedule(body.enabled, body.retentionDays, body.backupHour);
+    return {
+      message: 'Backup schedule updated successfully',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Post('backup/restore')
@@ -100,6 +119,25 @@ export class AdminController {
       message: 'Settings updated successfully',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Post('settings/test-slack')
+  async testSlackWebhook(@Body() body: { webhookUrl: string }) {
+    try {
+      await this.adminService.testSlackWebhook(body.webhookUrl);
+      return {
+        message: 'Slack test message sent successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Failed to send Slack test message',
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   @Post('system/maintenance')

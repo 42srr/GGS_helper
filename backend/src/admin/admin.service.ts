@@ -151,6 +151,48 @@ SELECT 'Backup completed successfully' as status;
     return backups;
   }
 
+  async getBackupStats(): Promise<any> {
+    const backupDir = path.join(process.cwd(), 'backups');
+
+    if (!fs.existsSync(backupDir)) {
+      return {
+        totalSize: '0 MB',
+        lastBackup: '없음',
+      };
+    }
+
+    const files = fs.readdirSync(backupDir);
+    const sqlFiles = files.filter((file) => file.endsWith('.sql'));
+
+    if (sqlFiles.length === 0) {
+      return {
+        totalSize: '0 MB',
+        lastBackup: '없음',
+      };
+    }
+
+    // 총 크기 계산 및 생성 시간 수집
+    let totalBytes = 0;
+    const times: Date[] = [];
+
+    sqlFiles.forEach((file) => {
+      const filePath = path.join(backupDir, file);
+      const stats = fs.statSync(filePath);
+      totalBytes += stats.size;
+      times.push(stats.birthtime);
+    });
+
+    // 가장 최근 백업 시간 찾기
+    const latestTime = times.length > 0
+      ? times.reduce((latest, current) => current > latest ? current : latest)
+      : null;
+
+    return {
+      totalSize: this.formatFileSize(totalBytes),
+      lastBackup: latestTime ? latestTime.toISOString() : '없음',
+    };
+  }
+
   async restoreBackup(backupId: string): Promise<void> {
     const backupDir = path.join(process.cwd(), 'backups');
     const backupPath = path.join(backupDir, `${backupId}.sql`);
@@ -280,6 +322,8 @@ SELECT 'Backup completed successfully' as status;
           reminderHours: 24,
           adminNotifications: true,
           systemAlerts: true,
+          slackWebhookUrl: '',
+          slackEnabled: false,
         },
         security: {
           sessionTimeout: 60,
@@ -326,6 +370,8 @@ SELECT 'Backup completed successfully' as status;
           reminderHours: 24,
           adminNotifications: true,
           systemAlerts: true,
+          slackWebhookUrl: '',
+          slackEnabled: false,
         },
         security: {
           sessionTimeout: 60,
@@ -381,6 +427,132 @@ SELECT 'Backup completed successfully' as status;
     } catch (error) {
       console.error('Failed to update settings:', error);
       throw error;
+    }
+  }
+
+  async testSlackWebhook(webhookUrl: string): Promise<void> {
+    try {
+      const testMessage = {
+        text: '🔔 *Slack 웹훅 테스트*',
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🔔 Slack 웹훅 연동 테스트',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: 'Slack 웹훅이 정상적으로 연동되었습니다!\n회의실 예약 신청 시 알림을 받을 수 있습니다.',
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `테스트 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testMessage),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}: ${response.statusText}`);
+      }
+
+      console.log('Slack test message sent successfully');
+    } catch (error) {
+      console.error('Failed to send Slack test message:', error);
+      throw new Error(`Slack 웹훅 테스트 실패: ${error.message}`);
+    }
+  }
+
+  async sendSlackNotification(
+    webhookUrl: string,
+    reservation: any,
+  ): Promise<void> {
+    try {
+      const message = {
+        text: '📅 새로운 회의실 예약 신청',
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '📅 새로운 회의실 예약 신청',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*예약자:*\n${reservation.userName || reservation.username}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*회의실:*\n${reservation.roomName}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*시작 시간:*\n${new Date(reservation.startTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*종료 시간:*\n${new Date(reservation.endTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*목적:*\n${reservation.purpose || '미입력'}`,
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `신청 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}`);
+      }
+
+      console.log('Slack notification sent successfully');
+    } catch (error) {
+      console.error('Failed to send Slack notification:', error);
+      // Slack 알림 실패는 예약 생성을 막지 않음
     }
   }
 
@@ -1093,6 +1265,170 @@ SELECT 'Backup completed successfully' as status;
     } catch (error) {
       console.error('Failed to create sample activities:', error);
     }
+  }
+
+  /**
+   * 오래된 백업 파일 삭제
+   * @param retentionDays 보관 기간 (일)
+   */
+  async cleanupOldBackups(retentionDays: number): Promise<number> {
+    const backupDir = path.join(process.cwd(), 'backups');
+
+    if (!fs.existsSync(backupDir)) {
+      return 0;
+    }
+
+    const files = fs.readdirSync(backupDir);
+    const sqlFiles = files.filter((file) => file.endsWith('.sql'));
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+    let deletedCount = 0;
+
+    for (const file of sqlFiles) {
+      const filePath = path.join(backupDir, file);
+      const stats = fs.statSync(filePath);
+
+      if (stats.birthtime < cutoffDate) {
+        fs.unlinkSync(filePath);
+        deletedCount++;
+        console.log(`🗑️ Deleted old backup: ${file}`);
+      }
+    }
+
+    // 활동 로그 기록
+    if (deletedCount > 0) {
+      await this.logActivity(
+        ActivityType.BACKUP_CREATED,
+        '오래된 백업 정리',
+        `${deletedCount}개의 오래된 백업 파일이 삭제되었습니다`,
+        undefined,
+        { deletedCount, retentionDays },
+        'info',
+      );
+    }
+
+    return deletedCount;
+  }
+
+  /**
+   * 백업 스케줄 상태 조회
+   */
+  async getBackupScheduleStatus(): Promise<any> {
+    const settings = await this.getSettings();
+    const backupHour = settings.system?.backupHour || 2;
+
+    return {
+      enabled: settings.system?.backupEnabled !== false, // 자동 백업 활성화 여부 (기본값: true)
+      schedule: this.formatBackupSchedule(backupHour),
+      backupHour: backupHour,
+      retentionDays: settings.system?.backupRetentionDays || 30,
+      lastBackup: await this.getLastBackupTime(),
+      nextBackup: this.getNextBackupTime(backupHour),
+    };
+  }
+
+  /**
+   * 백업 스케줄 포맷팅
+   */
+  private formatBackupSchedule(hour: number): string {
+    const period = hour < 12 ? '오전' : '오후';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `매일 ${period} ${displayHour}시`;
+  }
+
+  /**
+   * 백업 스케줄 설정 업데이트
+   */
+  async updateBackupSchedule(enabled: boolean, retentionDays: number, backupHour?: number): Promise<void> {
+    try {
+      // 백업 활성화 상태 업데이트
+      const enabledSetting = await this.settingsRepository.findOne({
+        where: { key: 'system.backupEnabled' },
+      });
+
+      if (enabledSetting) {
+        enabledSetting.value = enabled;
+        await this.settingsRepository.save(enabledSetting);
+      } else {
+        const newSetting = this.settingsRepository.create({
+          key: 'system.backupEnabled',
+          value: enabled,
+          description: '자동 백업 활성화 여부',
+        });
+        await this.settingsRepository.save(newSetting);
+      }
+
+      // 백업 보관 기간 업데이트
+      const retentionSetting = await this.settingsRepository.findOne({
+        where: { key: 'system.backupRetentionDays' },
+      });
+
+      if (retentionSetting) {
+        retentionSetting.value = retentionDays;
+        await this.settingsRepository.save(retentionSetting);
+      } else {
+        const newSetting = this.settingsRepository.create({
+          key: 'system.backupRetentionDays',
+          value: retentionDays,
+          description: '백업 보관 기간 (일)',
+        });
+        await this.settingsRepository.save(newSetting);
+      }
+
+      // 백업 시간 업데이트
+      if (backupHour !== undefined) {
+        const hourSetting = await this.settingsRepository.findOne({
+          where: { key: 'system.backupHour' },
+        });
+
+        if (hourSetting) {
+          hourSetting.value = backupHour;
+          await this.settingsRepository.save(hourSetting);
+        } else {
+          const newSetting = this.settingsRepository.create({
+            key: 'system.backupHour',
+            value: backupHour,
+            description: '자동 백업 실행 시간 (0-23)',
+          });
+          await this.settingsRepository.save(newSetting);
+        }
+      }
+
+      // 활동 로그 기록
+      await this.logActivity(
+        ActivityType.SETTINGS_UPDATED,
+        '백업 스케줄 설정 변경',
+        `자동 백업: ${enabled ? '활성화' : '비활성화'}, 보관 기간: ${retentionDays}일${backupHour !== undefined ? `, 백업 시간: ${backupHour}시` : ''}`,
+        undefined,
+        { enabled, retentionDays, backupHour },
+        'info',
+      );
+
+      console.log(`Backup schedule updated: enabled=${enabled}, retentionDays=${retentionDays}, backupHour=${backupHour}`);
+    } catch (error) {
+      console.error('Failed to update backup schedule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 다음 백업 예정 시간 계산
+   */
+  private getNextBackupTime(backupHour: number = 2): string {
+    const now = new Date();
+    const next = new Date(now);
+
+    // 지정된 시간으로 설정
+    next.setHours(backupHour, 0, 0, 0);
+
+    // 현재 시간이 백업 시간 이후라면 다음 날로 설정
+    if (now.getHours() >= backupHour) {
+      next.setDate(next.getDate() + 1);
+    }
+
+    return next.toISOString();
   }
 
 }
