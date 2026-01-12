@@ -10,8 +10,12 @@ import {
   Req,
   Query,
   Res,
+  UseInterceptors,
+  UploadedFile,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ReservationService } from './reservation.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
@@ -19,6 +23,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '../auth/enums/role.enum';
+import { multerConfig } from '../common/multer.config';
 
 @Controller('reservations')
 @UseGuards(JwtAuthGuard)
@@ -143,5 +148,46 @@ export class ReservationController {
     @Body() body: { status: string },
   ) {
     return this.reservationService.adminUpdateStatus(+id, body.status);
+  }
+
+  /**
+   * 체크아웃 인증 사진 업로드
+   */
+  @Post(':id/checkout-photo')
+  @UseInterceptors(FileInterceptor('photo', multerConfig))
+  async uploadCheckoutPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('notes') notes: string,
+    @Req() req: any,
+  ) {
+    return await this.reservationService.uploadCheckoutPhoto(
+      id,
+      file,
+      req.user.userId,
+      notes,
+    );
+  }
+
+  /**
+   * 체크아웃 사진 조회
+   */
+  @Get(':id/checkout-photo')
+  async getCheckoutPhoto(@Param('id', ParseIntPipe) id: number) {
+    return await this.reservationService.getCheckoutPhoto(id);
+  }
+
+  /**
+   * 체크아웃 사진 삭제
+   */
+  @Delete(':id/checkout-photo')
+  async deleteCheckoutPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ) {
+    await this.reservationService.deleteCheckoutPhoto(id, req.user.userId);
+    return {
+      message: 'Checkout photo deleted successfully',
+    };
   }
 }

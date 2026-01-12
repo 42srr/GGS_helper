@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan, LessThan, IsNull } from 'typeorm';
@@ -11,7 +13,10 @@ import { User } from '../user/entities/user.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { AdminService } from '../admin/admin.service';
+import { ImageService } from '../common/services/image.service';
 import * as XLSX from 'xlsx';
+import * as path from 'path';
 
 @Injectable()
 export class ReservationService {
@@ -22,6 +27,9 @@ export class ReservationService {
     private roomRepository: Repository<Room>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @Inject(forwardRef(() => AdminService))
+    private adminService: AdminService,
+    private imageService: ImageService,
   ) {}
 
   // 매 시간마다 예약 시간이 지난 confirmed 예약을 finished로 변경
@@ -187,7 +195,44 @@ export class ReservationService {
       status,
     });
 
-    return await this.reservationRepository.save(reservation);
+    const savedReservation = await this.reservationRepository.save(reservation);
+
+    // Slack 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
+    this.sendSlackNotificationIfEnabled(savedReservation, user, room).catch((err) => {
+      console.error('Failed to send Slack notification:', err);
+    });
+
+    return savedReservation;
+  }
+
+  private async sendSlackNotificationIfEnabled(
+    reservation: Reservation,
+    user: User,
+    room: Room,
+  ): Promise<void> {
+    try {
+      const settings = await this.adminService.getSettings();
+
+      if (
+        settings.notifications?.slackEnabled &&
+        settings.notifications?.slackWebhookUrl
+      ) {
+        await this.adminService.sendSlackNotification(
+          settings.notifications.slackWebhookUrl,
+          {
+            userName: user.name || user.username,
+            username: user.username,
+            roomName: room.name,
+            startTime: reservation.startTime,
+            endTime: reservation.endTime,
+            purpose: reservation.title || reservation.description,
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Slack notification error:', error);
+      // 알림 실패는 예약 생성을 막지 않음
+    }
   }
 
   // 시간 충돌 검사 헬퍼 메서드 (DB 레벨에서 최적화)
@@ -654,5 +699,147 @@ export class ReservationService {
     return Buffer.from(
       XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
     );
+  }
+
+  /**
+   * 체크아웃 인증 사진 업로드
+   */
+  async uploadCheckoutPhoto(
+    reservationId: number,
+    file: Express.Multer.File,
+    userId: number,
+    notes?: string,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('Photo file is required');
+    }
+
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+      relations: ['room', 'user'],
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    // 예약 소유자 확인
+    if (reservation.userId !== userId) {
+      throw new BadRequestException(
+        'You can only upload photos for your own reservations',
+      );
+    }
+
+    // 이미 체크아웃 완료된 경우 기존 사진 삭제
+    if (reservation.checkoutPhotoPath) {
+      this.imageService.deleteFile(reservation.checkoutPhotoPath);
+      // 썸네일도 삭제
+      const thumbnailPath = reservation.checkoutPhotoPath.replace(
+        '_optimized',
+        '_optimized_thumb',
+      );
+      this.imageService.deleteFile(thumbnailPath);
+    }
+
+    // 이미지 최적화
+    const optimizedPath = await this.imageService.optimizeImage(file.path);
+
+    // 썸네일 생성
+    const thumbnailPath = await this.imageService.createThumbnail(optimizedPath);
+
+    // URL 생성 (정적 파일 서빙 경로)
+    const photoUrl = `/uploads/checkout-photos/${path.basename(optimizedPath)}`;
+    const thumbnailUrl = `/uploads/checkout-photos/${path.basename(thumbnailPath)}`;
+
+    // DB 업데이트
+    reservation.checkoutPhotoPath = optimizedPath;
+    reservation.checkoutPhotoUrl = photoUrl;
+    reservation.checkoutVerifiedAt = new Date();
+    reservation.checkoutNotes = notes || null;
+
+    await this.reservationRepository.save(reservation);
+
+    return {
+      message: 'Checkout photo uploaded successfully',
+      photoUrl,
+      thumbnailUrl,
+      verifiedAt: reservation.checkoutVerifiedAt,
+    };
+  }
+
+  /**
+   * 체크아웃 사진 조회
+   */
+  async getCheckoutPhoto(reservationId: number): Promise<any> {
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+      select: [
+        'reservationId',
+        'checkoutPhotoUrl',
+        'checkoutVerifiedAt',
+        'checkoutNotes',
+      ],
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (!reservation.checkoutPhotoUrl) {
+      return {
+        hasPhoto: false,
+        message: 'No checkout photo available',
+      };
+    }
+
+    return {
+      hasPhoto: true,
+      photoUrl: reservation.checkoutPhotoUrl,
+      verifiedAt: reservation.checkoutVerifiedAt,
+      notes: reservation.checkoutNotes,
+    };
+  }
+
+  /**
+   * 체크아웃 사진 삭제
+   */
+  async deleteCheckoutPhoto(
+    reservationId: number,
+    userId: number,
+  ): Promise<void> {
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    // 예약 소유자 또는 관리자만 삭제 가능
+    if (reservation.userId !== userId) {
+      throw new BadRequestException(
+        'You can only delete photos for your own reservations',
+      );
+    }
+
+    if (!reservation.checkoutPhotoPath) {
+      throw new NotFoundException('No checkout photo to delete');
+    }
+
+    // 파일 삭제
+    this.imageService.deleteFile(reservation.checkoutPhotoPath);
+    const thumbnailPath = reservation.checkoutPhotoPath.replace(
+      '_optimized',
+      '_optimized_thumb',
+    );
+    this.imageService.deleteFile(thumbnailPath);
+
+    // DB 업데이트
+    reservation.checkoutPhotoPath = null;
+    reservation.checkoutPhotoUrl = null;
+    reservation.checkoutVerifiedAt = null;
+    reservation.checkoutNotes = null;
+
+    await this.reservationRepository.save(reservation);
   }
 }

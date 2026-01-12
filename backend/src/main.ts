@@ -1,13 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // 정적 파일 서빙 설정
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   // 파일 업로드 크기 제한 증가 (20MB)
   app.use(json({ limit: '20mb' }));

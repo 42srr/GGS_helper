@@ -57,6 +57,18 @@ export class Reservation {
   @Column({ name: 'is_late', type: 'boolean', default: false })
   isLate: boolean;
 
+  @Column({ name: 'checkout_photo_path', type: 'varchar', length: 500, nullable: true })
+  checkoutPhotoPath: string | null;
+
+  @Column({ name: 'checkout_photo_url', type: 'varchar', length: 500, nullable: true })
+  checkoutPhotoUrl: string | null;
+
+  @Column({ name: 'checkout_verified_at', type: 'timestamp', nullable: true })
+  checkoutVerifiedAt: Date | null;
+
+  @Column({ name: 'checkout_notes', type: 'text', nullable: true })
+  checkoutNotes: string | null;
+
   @CreateDateColumn({ name: 'reservation_createdat' })
   createdAt: Date;
 
