@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { CheckoutReviewModal } from '../../components/admin/CheckoutReviewModal';
 import {
   Select,
   SelectContent,
@@ -21,11 +22,12 @@ import {
   Search,
   Download,
   ArrowLeft,
-  Trash2,
   Filter,
   CheckCircle,
   XCircle,
   AlertCircle,
+  Eye,
+  Camera,
 } from 'lucide-react';
 
 interface Reservation {
@@ -34,7 +36,7 @@ interface Reservation {
   description?: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'confirmed' | 'finished' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'in_progress' | 'awaiting_checkout' | 'finished' | 'cancelled';
   createdAt: string;
   updatedAt: string;
   isNoShow?: boolean;
@@ -42,6 +44,9 @@ interface Reservation {
   checkInAt?: string;
   noShowReportedAt?: string;
   noShowReportCount?: number;
+  checkoutPhotoUrl?: string;
+  checkoutVerifiedAt?: string;
+  checkoutNotes?: string;
   room: {
     roomId: number;
     name: string;
@@ -64,6 +69,9 @@ export function AdminReservationsPage() {
   const [noShowFilter, setNoShowFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
+  const [checkoutFilter, setCheckoutFilter] = useState('all');
+  const [selectedCheckoutReservation, setSelectedCheckoutReservation] = useState<Reservation | null>(null);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
   useEffect(() => {
     fetchReservations();
@@ -71,7 +79,7 @@ export function AdminReservationsPage() {
 
   useEffect(() => {
     filterAndSortReservations();
-  }, [reservations, searchTerm, statusFilter, noShowFilter, dateFilter, sortBy]);
+  }, [reservations, searchTerm, statusFilter, noShowFilter, dateFilter, sortBy, checkoutFilter]);
 
   const fetchReservations = async () => {
     try {
@@ -127,6 +135,15 @@ export function AdminReservationsPage() {
       });
     }
 
+    // 체크아웃 필터
+    if (checkoutFilter === 'completed') {
+      filtered = filtered.filter((res) => res.checkoutPhotoUrl);
+    } else if (checkoutFilter === 'pending') {
+      filtered = filtered.filter(
+        (res) => res.status === 'awaiting_checkout' && !res.checkoutPhotoUrl
+      );
+    }
+
     // 정렬
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -144,29 +161,6 @@ export function AdminReservationsPage() {
     });
 
     setFilteredReservations(filtered);
-  };
-
-  const handleDelete = async (reservationId: number) => {
-    if (!confirm('정말로 이 예약을 삭제하시겠습니까?')) return;
-
-    try {
-      const response = await fetch(`http://localhost:3001/reservations/${reservationId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-
-      if (response.ok) {
-        alert('예약이 삭제되었습니다.');
-        fetchReservations();
-      } else {
-        alert('예약 삭제에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('Delete reservation error:', error);
-      alert('예약 삭제 중 오류가 발생했습니다.');
-    }
   };
 
   const handleStatusChange = async (reservationId: number, newStatus: string) => {
@@ -228,6 +222,16 @@ export function AdminReservationsPage() {
     });
   };
 
+  const handleCheckoutReview = (reservation: Reservation) => {
+    setSelectedCheckoutReservation(reservation);
+    setCheckoutModalOpen(true);
+  };
+
+  const handleCheckoutModalClose = () => {
+    setCheckoutModalOpen(false);
+    setSelectedCheckoutReservation(null);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -242,6 +246,20 @@ export function AdminReservationsPage() {
           <Badge className="bg-green-100 text-green-800 border-green-200">
             <CheckCircle className="w-3 h-3 mr-1" />
             확정
+          </Badge>
+        );
+      case 'in_progress':
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            <Clock className="w-3 h-3 mr-1" />
+            진행 중
+          </Badge>
+        );
+      case 'awaiting_checkout':
+        return (
+          <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+            <Clock className="w-3 h-3 mr-1" />
+            반납 대기
           </Badge>
         );
       case 'finished':
@@ -309,7 +327,7 @@ export function AdminReservationsPage() {
         </div>
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">전체 예약</CardTitle>
@@ -341,6 +359,34 @@ export function AdminReservationsPage() {
             </CardContent>
           </Card>
 
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-orange-800 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                반납 대기
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                {reservations.filter(r => r.status === 'awaiting_checkout').length}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-200 bg-purple-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                체크아웃 완료
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                {reservations.filter(r => r.checkoutPhotoUrl).length}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-red-200 bg-red-50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-red-800 flex items-center gap-2">
@@ -368,7 +414,7 @@ export function AdminReservationsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
               <div className="relative md:col-span-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -387,8 +433,20 @@ export function AdminReservationsPage() {
                   <SelectItem value="all">전체 상태</SelectItem>
                   <SelectItem value="pending">승인 대기</SelectItem>
                   <SelectItem value="confirmed">확정</SelectItem>
+                  <SelectItem value="in_progress">진행 중</SelectItem>
+                  <SelectItem value="awaiting_checkout">반납 대기</SelectItem>
                   <SelectItem value="finished">완료</SelectItem>
                   <SelectItem value="cancelled">취소</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={checkoutFilter} onValueChange={setCheckoutFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="체크아웃 상태" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="completed">체크아웃 완료</SelectItem>
+                  <SelectItem value="pending">체크아웃 대기</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={noShowFilter} onValueChange={setNoShowFilter}>
@@ -425,6 +483,7 @@ export function AdminReservationsPage() {
                 onClick={() => {
                   setSearchTerm('');
                   setStatusFilter('all');
+                  setCheckoutFilter('all');
                   setNoShowFilter('all');
                   setDateFilter('');
                   setSortBy('date-desc');
@@ -521,6 +580,7 @@ export function AdminReservationsPage() {
                     <th className="text-left p-4 font-medium">예약 일시</th>
                     <th className="text-left p-4 font-medium">시간</th>
                     <th className="text-left p-4 font-medium">상태</th>
+                    <th className="text-left p-4 font-medium">체크아웃</th>
                     <th className="text-left p-4 font-medium">관리</th>
                   </tr>
                 </thead>
@@ -599,33 +659,43 @@ export function AdminReservationsPage() {
                               체크인 완료
                             </Badge>
                           )}
+                          {reservation.checkoutPhotoUrl && (
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
+                              <Camera className="w-3 h-3 mr-1" />
+                              체크아웃 완료
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex space-x-2">
-                          <Select
-                            value={reservation.status}
-                            onValueChange={(value) => handleStatusChange(reservation.reservationId, value)}
-                          >
-                            <SelectTrigger className="w-32 h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">승인 대기</SelectItem>
-                              <SelectItem value="confirmed">확정</SelectItem>
-                              <SelectItem value="finished">완료</SelectItem>
-                              <SelectItem value="cancelled">취소</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        {reservation.checkoutPhotoUrl ? (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDelete(reservation.reservationId)}
-                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleCheckoutReview(reservation)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Eye className="h-4 w-4 mr-1" />
+                            검수
                           </Button>
-                        </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <Select
+                          value={reservation.status}
+                          onValueChange={(value) => handleStatusChange(reservation.reservationId, value)}
+                        >
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">승인 대기</SelectItem>
+                            <SelectItem value="confirmed">확정</SelectItem>
+                            <SelectItem value="finished">완료</SelectItem>
+                            <SelectItem value="cancelled">취소</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                     </tr>
                   ))}
@@ -641,6 +711,15 @@ export function AdminReservationsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* 체크아웃 검수 모달 */}
+        {selectedCheckoutReservation && (
+          <CheckoutReviewModal
+            reservation={selectedCheckoutReservation}
+            isOpen={checkoutModalOpen}
+            onClose={handleCheckoutModalClose}
+          />
+        )}
       </main>
       <Footer />
     </div>
