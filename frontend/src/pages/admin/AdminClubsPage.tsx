@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select';
 import {
   Users,
-  User,
   CheckCircle,
   XCircle,
   Clock,
@@ -23,7 +22,6 @@ import {
   ArrowLeft,
   Search,
   Filter,
-  Download,
   RefreshCw,
 } from 'lucide-react';
 

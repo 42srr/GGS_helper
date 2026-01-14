@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Calendar,
   FileText,
-  Shield,
   Trash2,
   Settings,
   Save

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import type { Room, Reservation } from '@/types/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay, isSameMonth } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { getRoomColor } from '@/utils/calendar/roomColors';
 import { cn } from '@/lib/utils';
 
