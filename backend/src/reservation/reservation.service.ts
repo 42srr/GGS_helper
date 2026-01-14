@@ -32,21 +32,81 @@ export class ReservationService {
     private imageService: ImageService,
   ) {}
 
-  // 매 시간마다 예약 시간이 지난 confirmed 예약을 finished로 변경
+  // 매 시간마다 예약 시간이 지난 confirmed 예약을 awaiting_checkout으로 변경
   @Cron(CronExpression.EVERY_HOUR)
-  async updateFinishedReservations() {
+  async updateAwaitingCheckoutReservations() {
     const now = new Date();
 
     const result = await this.reservationRepository
       .createQueryBuilder()
       .update(Reservation)
-      .set({ status: 'finished' })
+      .set({ status: 'awaiting_checkout' })
       .where('reservation_endtime < :now', { now })
       .andWhere('reservation_status = :status', { status: 'confirmed' })
       .execute();
 
     if (result.affected && result.affected > 0) {
-      console.log(`Updated ${result.affected} reservations to finished status`);
+      console.log(
+        `Updated ${result.affected} reservations to awaiting_checkout status`
+      );
+    }
+  }
+
+  // 6시간마다 이미지 업로드 완료된 것만 finished로 전환
+  @Cron('0 */6 * * *')
+  async updateFinishedReservations() {
+    const result = await this.reservationRepository
+      .createQueryBuilder()
+      .update(Reservation)
+      .set({ status: 'finished' })
+      .where('reservation_status = :status', { status: 'awaiting_checkout' })
+      .andWhere('checkout_photo_url IS NOT NULL')
+      .execute();
+
+    if (result.affected && result.affected > 0) {
+      console.log(
+        `Updated ${result.affected} reservations to finished status (with photo)`
+      );
+    }
+  }
+
+  // 매일 오전 9시 - 24시간 이상 이미지 미업로드 예약 알림
+  @Cron('0 9 * * *', { timeZone: 'Asia/Seoul' })
+  async sendOverdueCheckoutReminders() {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const overdueReservations = await this.reservationRepository.find({
+      where: {
+        status: 'awaiting_checkout',
+        endTime: LessThan(yesterday),
+      },
+      relations: ['user', 'room'],
+    });
+
+    if (overdueReservations.length > 0) {
+      console.warn(
+        `Found ${overdueReservations.length} overdue checkout photos`
+      );
+
+      // Slack 알림 발송 (관리자용)
+      if (overdueReservations.length > 0) {
+        const message =
+          `⚠️ 체크아웃 사진 미업로드 알림\n\n` +
+          `24시간 이상 미업로드 예약: ${overdueReservations.length}건\n\n` +
+          overdueReservations
+            .map(
+              (r) =>
+                `- ${r.user.name} (${r.room.name}) - 종료: ${r.endTime.toLocaleString('ko-KR')}`
+            )
+            .join('\n');
+
+        // TODO: Slack webhook 설정 후 알림 활성화
+        // try {
+        //   await this.adminService.sendSlackNotification(webhookUrl, message);
+        // } catch (error) {
+        //   console.error('Failed to send Slack notification:', error);
+        // }
+      }
     }
   }
 
@@ -268,7 +328,7 @@ export class ReservationService {
   async findByUser(userId: number): Promise<Reservation[]> {
     return await this.reservationRepository.find({
       where: { userId },
-      relations: ['room'],
+      relations: ['room', 'user'],
       order: { startTime: 'DESC' },
     });
   }
@@ -486,9 +546,9 @@ export class ReservationService {
       throw new BadRequestException('이미 종료된 예약입니다');
     }
 
-    // 예약 종료 시간을 현재 시간으로 변경하고 상태를 finished로 변경
+    // 예약 종료 시간을 현재 시간으로 변경하고 상태를 awaiting_checkout으로 변경
     reservation.endTime = now;
-    reservation.status = 'finished';
+    reservation.status = 'awaiting_checkout';
 
     return await this.reservationRepository.save(reservation);
   }
@@ -623,7 +683,7 @@ export class ReservationService {
       throw new NotFoundException('예약을 찾을 수 없습니다');
     }
 
-    reservation.status = status;
+    reservation.status = status as any; // Type assertion for admin operations
     return await this.reservationRepository.save(reservation);
   }
 
@@ -757,6 +817,14 @@ export class ReservationService {
     reservation.checkoutVerifiedAt = new Date();
     reservation.checkoutNotes = notes || null;
 
+    // 🔥 핵심: 사진 업로드 완료 시 finished 상태로 전환
+    if (
+      reservation.status === 'awaiting_checkout' ||
+      reservation.status === 'confirmed'
+    ) {
+      reservation.status = 'finished';
+    }
+
     await this.reservationRepository.save(reservation);
 
     return {
@@ -764,6 +832,7 @@ export class ReservationService {
       photoUrl,
       thumbnailUrl,
       verifiedAt: reservation.checkoutVerifiedAt,
+      status: reservation.status,
     };
   }
 

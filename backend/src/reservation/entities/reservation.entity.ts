@@ -10,6 +10,14 @@ import {
 import { Room } from '../../room/entities/room.entity';
 import { User } from '../../user/entities/user.entity';
 
+export type ReservationStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in_progress'
+  | 'awaiting_checkout'
+  | 'finished'
+  | 'cancelled';
+
 @Entity('reservation')
 export class Reservation {
   @PrimaryGeneratedColumn({ name: 'reservation_id' })
@@ -40,7 +48,7 @@ export class Reservation {
   teamName: string;
 
   @Column({ name: 'reservation_status', type: 'varchar', default: 'confirmed' })
-  status: string;
+  status: ReservationStatus;
 
   @Column({ name: 'is_no_show', type: 'boolean', default: false })
   isNoShow: boolean;
