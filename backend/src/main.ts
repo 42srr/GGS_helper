@@ -12,7 +12,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // 정적 파일 서빙 설정
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // __dirname은 dist/src를 가리킴, uploads는 backend/ (프로젝트 루트)에 있음
+  app.useStaticAssets(join(__dirname, '..', '..', 'uploads'), {
     prefix: '/uploads/',
   });
 
