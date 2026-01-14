@@ -16,11 +16,13 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminBackupPage } from './pages/admin/AdminBackupPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminStatisticsPage } from './pages/admin/AdminStatisticsPage';
+import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <Toaster />
         <Routes>
           <Route path="/" element={<PublicReservationsPage />} />
           <Route path="/login" element={<LoginPage />} />
