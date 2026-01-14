@@ -295,6 +295,17 @@ export class ReservationService {
     }
   }
 
+  /**
+   * 예약 충돌 체크 (공개 API)
+   */
+  async checkConflict(
+    roomId: number,
+    start: Date,
+    end: Date,
+  ): Promise<boolean> {
+    return this.checkTimeConflict(roomId, start, end);
+  }
+
   // 시간 충돌 검사 헬퍼 메서드 (DB 레벨에서 최적화)
   private async checkTimeConflict(
     roomId: number,
