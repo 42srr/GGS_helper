@@ -35,7 +35,7 @@ export type Reservation = {
   description?: string;
   startTime: Date;
   endTime: Date;
-  status?: 'confirmed' | 'pending' | 'cancelled' | 'in_progress' | 'finished';
+  status?: 'confirmed' | 'pending' | 'cancelled' | 'in_progress' | 'awaiting_checkout' | 'finished';
   createdAt?: Date;
   room?: Room;
   user?: {

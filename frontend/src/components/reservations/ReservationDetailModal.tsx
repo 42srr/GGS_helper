@@ -225,9 +225,18 @@ export function ReservationDetailModal({
             </div>
           )}
 
-          {/* 체크아웃 사진 업로드 (confirmed 상태이고 종료 시간이 지난 경우) */}
-          {reservation.status === 'confirmed' && new Date() > reservation.endTime && (
+          {/* 체크아웃 사진 업로드 (awaiting_checkout 또는 confirmed 상태이고 종료 시간이 지난 경우) */}
+          {(reservation.status === 'awaiting_checkout' ||
+            (reservation.status === 'confirmed' && new Date() > reservation.endTime)) && (
             <div className="border-t pt-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-yellow-900">
+                  ⚠️ 체크아웃 사진 업로드가 필요합니다
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  회의실 반납을 완료하려면 사진을 업로드해주세요.
+                </p>
+              </div>
               <CheckoutPhotoUpload
                 reservationId={reservation.reservationId}
                 onUploadSuccess={() => {
