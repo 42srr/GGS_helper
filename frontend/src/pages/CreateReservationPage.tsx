@@ -11,6 +11,8 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown, RotateCcw } from 'lucide-react';
+import { AfterHoursNoticeDialog } from '@/components/reservations/AfterHoursNoticeDialog';
+import { isAfterHoursReservation } from '@/utils/businessHours';
 
 interface Room {
   roomId: number;
@@ -20,6 +22,7 @@ interface Room {
   equipment?: string;
   description?: string;
   isAvailable: boolean;
+  isConfirm: boolean;
 }
 
 export function CreateReservationPage() {
@@ -33,6 +36,7 @@ export function CreateReservationPage() {
   const [showRulesDialog, setShowRulesDialog] = useState(true);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banInfo, setBanInfo] = useState<{ banUntil: string | null }>({ banUntil: null });
+  const [showAfterHoursNotice, setShowAfterHoursNotice] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -107,6 +111,28 @@ export function CreateReservationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 기본 검증
+    if (!formData.title || !formData.roomId || !formData.date ||
+        !formData.startTime || !formData.endTime || !formData.attendees) {
+      alert('모든 필수 항목을 입력해주세요.');
+      return;
+    }
+
+    // 승인 필요 회의실 + 업무시간 외 체크
+    const selectedRoom = rooms.find(r => r.roomId === parseInt(formData.roomId));
+
+    if (selectedRoom?.isConfirm && isAfterHoursReservation()) {
+      // 승인이 필요한 회의실 + 업무시간 외 = 안내 모달 표시
+      setShowAfterHoursNotice(true);
+      return;
+    }
+
+    // 바로 제출
+    await submitReservation();
+  };
+
+  const submitReservation = async () => {
     setSubmitting(true);
 
     try {
@@ -147,6 +173,15 @@ export function CreateReservationPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAfterHoursConfirm = async () => {
+    setShowAfterHoursNotice(false);
+    await submitReservation();
+  };
+
+  const handleAfterHoursCancel = () => {
+    setShowAfterHoursNotice(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -634,6 +669,14 @@ export function CreateReservationPage() {
           </form>
         </div>
       </main>
+
+      {/* 업무시간 외 안내 모달 */}
+      <AfterHoursNoticeDialog
+        isOpen={showAfterHoursNotice}
+        roomName={rooms.find(r => r.roomId === parseInt(formData.roomId))?.name || '선택한 회의실'}
+        onConfirm={handleAfterHoursConfirm}
+        onCancel={handleAfterHoursCancel}
+      />
     </div>
   );
 }
