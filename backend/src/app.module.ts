@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -23,6 +25,13 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
     }),
     ScheduleModule.forRoot(),
     TokenBlacklistModule,
+    // Rate Limiting 설정
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,  // Time To Live: 60초 (밀리초 단위)
+        limit: 100,  // 60초 동안 최대 100개 요청 허용
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -65,6 +74,13 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
     AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Rate Limiting Guard를 전역으로 적용
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

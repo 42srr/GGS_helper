@@ -15,10 +15,12 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ReservationService } from './reservation.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
+import { CheckConflictDto } from './dto/check-conflict.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -30,9 +32,39 @@ import { multerConfig } from '../common/multer.config';
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
+  /**
+   * 예약 생성 - 스팸 예약 방지
+   * 60초에 20번까지만 허용
+   */
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })  // 60초에 20번
   create(@Body() createReservationDto: CreateReservationDto, @Req() req: any) {
     return this.reservationService.create(createReservationDto, req.user.userId);
+  }
+
+  /**
+   * 충돌 체크 - 빈번한 호출 가능하므로 여유있게 설정
+   * 60초에 60번까지 허용
+   */
+  @Post('check-conflict')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })  // 60초에 60번
+  async checkConflict(@Body() checkConflictDto: CheckConflictDto) {
+    const { roomId, startDatetime, endDatetime } = checkConflictDto;
+    const start = new Date(startDatetime);
+    const end = new Date(endDatetime);
+
+    const hasConflict = await this.reservationService.checkConflict(
+      roomId,
+      start,
+      end,
+    );
+
+    return {
+      hasConflict,
+      message: hasConflict
+        ? '해당 시간대에 이미 다른 예약이 있습니다'
+        : '예약 가능한 시간입니다',
+    };
   }
 
   @Get()

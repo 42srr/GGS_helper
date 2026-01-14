@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { join } from 'path';
 
 async function bootstrap() {
@@ -26,8 +27,11 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global exception filter for better error handling
-  app.useGlobalFilters(new AllExceptionsFilter());
+  // Global exception filters for better error handling
+  app.useGlobalFilters(
+    new AllExceptionsFilter(),
+    new ThrottlerExceptionFilter(),  // Rate Limit 초과 에러 처리
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
