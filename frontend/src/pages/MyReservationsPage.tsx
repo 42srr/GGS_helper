@@ -60,12 +60,11 @@ export function MyReservationsPage() {
         setReservations(data);
       }
     } catch (error) {
-      console.error('Failed to fetch reservations:', error);
+
     } finally {
       setLoading(false);
     }
   };
-
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -169,7 +168,7 @@ export function MyReservationsPage() {
         alert(errorData.message || '체크인에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Check-in error:', error);
+
       alert('체크인 중 오류가 발생했습니다.');
     }
   };
@@ -196,7 +195,7 @@ export function MyReservationsPage() {
         alert(errorData.message || '조기 반납에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Early return error:', error);
+
       alert('조기 반납 중 오류가 발생했습니다.');
     }
   };
@@ -218,7 +217,7 @@ export function MyReservationsPage() {
           alert('예약 취소에 실패했습니다.');
         }
       } catch (error) {
-        console.error('Cancel reservation error:', error);
+
         alert('예약 취소 중 오류가 발생했습니다.');
       }
     }

@@ -99,7 +99,7 @@ export function AdminStatisticsPage() {
         setStatistics(data);
       }
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+
       alert('통계 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
@@ -126,7 +126,7 @@ export function AdminStatisticsPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export report:', error);
+
     }
   };
 

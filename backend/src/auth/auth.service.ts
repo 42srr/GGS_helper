@@ -19,7 +19,7 @@ export class AuthService {
 
   async logout(userId: number, token: string): Promise<void> {
     if (!token) {
-      console.warn('[AUTH] Logout called without token');
+
       return;
     }
 
@@ -28,7 +28,7 @@ export class AuthService {
       const decoded = this.jwtService.decode(token) as any;
 
       if (!decoded || !decoded.exp) {
-        console.warn('[AUTH] Invalid token format, cannot blacklist');
+
         return;
       }
 
@@ -37,16 +37,15 @@ export class AuthService {
       const expiresIn = decoded.exp - currentTime;
 
       if (expiresIn <= 0) {
-        console.log('[AUTH] Token already expired, no need to blacklist');
+
         return;
       }
 
       // 토큰을 블랙리스트에 추가
       await this.tokenBlacklistService.addToBlacklist(token, expiresIn);
 
-      console.log(`[AUTH] User ${userId} logged out successfully, token blacklisted for ${expiresIn}s`);
     } catch (error) {
-      console.error('[AUTH] Error during logout:', error);
+
       throw error;
     }
   }

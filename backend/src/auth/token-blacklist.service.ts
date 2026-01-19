@@ -17,13 +17,13 @@ export class TokenBlacklistService implements OnModuleInit, OnModuleDestroy {
       try {
         this.redis = new Redis(redisUrl);
         this.useRedis = true;
-        console.log('✅ Redis connected for token blacklist');
+
       } catch (error) {
-        console.warn('⚠️  Redis connection failed, using in-memory blacklist:', error.message);
+
         this.useRedis = false;
       }
     } else {
-      console.log('ℹ️  REDIS_URL not configured, using in-memory blacklist');
+
       this.useRedis = false;
     }
   }
@@ -45,16 +45,15 @@ export class TokenBlacklistService implements OnModuleInit, OnModuleDestroy {
     if (this.useRedis && this.redis) {
       // Redis에 저장 (TTL 설정)
       await this.redis.setex(key, expiresIn, '1');
-      console.log(`[TOKEN-BLACKLIST] Token added to Redis blacklist (TTL: ${expiresIn}s)`);
+
     } else {
       // 메모리에 저장
       this.memoryBlacklist.add(token);
-      console.log(`[TOKEN-BLACKLIST] Token added to memory blacklist`);
 
       // TTL 시뮬레이션 - expiresIn 후 자동 삭제
       setTimeout(() => {
         this.memoryBlacklist.delete(token);
-        console.log(`[TOKEN-BLACKLIST] Token expired and removed from memory blacklist`);
+
       }, expiresIn * 1000);
     }
   }
@@ -85,7 +84,7 @@ export class TokenBlacklistService implements OnModuleInit, OnModuleDestroy {
 
     if (this.useRedis && this.redis) {
       await this.redis.setex(key, expiresIn, new Date().toISOString());
-      console.log(`[TOKEN-BLACKLIST] All tokens for user ${userId} invalidated`);
+
     }
     // 메모리 방식에서는 개별 토큰만 관리
   }

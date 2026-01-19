@@ -39,7 +39,7 @@ export function CheckoutPhotoView({ reservationId }: CheckoutPhotoViewProps) {
         setPhotoData(data);
       }
     } catch (error) {
-      console.error('Failed to fetch checkout photo:', error);
+
     } finally {
       setLoading(false);
     }

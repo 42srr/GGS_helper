@@ -54,7 +54,7 @@ export function ReservationsPage() {
         setRooms(roomsData);
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export function ReservationsPage() {
 
   const handleEmptySlotClick = (room: Room, timeSlot: TimeSlot) => {
     // 빈 슬롯 클릭 시 예약 생성 페이지로 이동
-    console.log('Empty slot clicked:', room, timeSlot);
+
     // TODO: 빠른 예약 모달 또는 예약 생성 페이지로 이동
   };
 

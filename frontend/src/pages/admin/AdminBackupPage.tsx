@@ -75,7 +75,7 @@ export function AdminBackupPage() {
         setLastBackupTime(data.lastBackup || '없음');
       }
     } catch (error) {
-      console.error('Failed to fetch backups:', error);
+
     }
   };
 
@@ -97,7 +97,7 @@ export function AdminBackupPage() {
         });
       }
     } catch (error) {
-      console.error('Failed to fetch backup schedule:', error);
+
     }
   };
 
@@ -139,7 +139,7 @@ export function AdminBackupPage() {
         alert('❌ 백업 스케줄 업데이트에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to update backup schedule:', error);
+
       alert('❌ 백업 스케줄 업데이트 중 오류가 발생했습니다.');
     } finally {
       setSavingSchedule(false);
@@ -238,7 +238,7 @@ export function AdminBackupPage() {
         alert('❌ 백업 생성에 실패했습니다.');
       }
     } catch (error) {
-      console.error('백업 생성 실패:', error);
+
       clearInterval(interval);
       alert('❌ 백업 생성 중 오류가 발생했습니다.');
     } finally {
@@ -267,7 +267,7 @@ export function AdminBackupPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('백업 다운로드 실패:', error);
+
     }
   };
 
@@ -289,7 +289,7 @@ export function AdminBackupPage() {
         alert('❌ 백업 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('백업 삭제 실패:', error);
+
       alert('❌ 백업 삭제 중 오류가 발생했습니다.');
     }
   };

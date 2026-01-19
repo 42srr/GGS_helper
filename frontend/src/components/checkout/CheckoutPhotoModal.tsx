@@ -88,7 +88,7 @@ export const CheckoutPhotoModal: React.FC<CheckoutPhotoModalProps> = ({
         setError(errorData.message || '업로드에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+
       setError('업로드 중 오류가 발생했습니다.');
     } finally {
       setUploading(false);

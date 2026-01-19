@@ -74,7 +74,7 @@ export const CheckoutReviewModal: React.FC<CheckoutReviewModalProps> = ({
         setError('체크아웃 정보를 불러오는데 실패했습니다.');
       }
     } catch (err) {
-      console.error('Failed to fetch checkout photo:', err);
+
       setError('체크아웃 정보를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

@@ -71,7 +71,7 @@ export function AdminClubsPage() {
         setClubs(data);
       }
     } catch (error) {
-      console.error('Failed to fetch clubs:', error);
+
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export function AdminClubsPage() {
         alert('동아리 승인에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to approve club:', error);
+
       alert('동아리 승인 중 오류가 발생했습니다.');
     }
   };
@@ -155,7 +155,7 @@ export function AdminClubsPage() {
         alert('동아리 거부에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to reject club:', error);
+
       alert('동아리 거부 중 오류가 발생했습니다.');
     }
   };

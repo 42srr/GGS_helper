@@ -72,7 +72,7 @@ export function CreateReservationPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to check reservation status:', error);
+
     }
   };
 
@@ -108,7 +108,7 @@ export function CreateReservationPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to check conflict:', error);
+
     } finally {
       setCheckingConflict(false);
     }
@@ -143,7 +143,7 @@ export function CreateReservationPage() {
         setRooms(data.filter((room: Room) => room.isAvailable));
       }
     } catch (error) {
-      console.error('Failed to fetch rooms:', error);
+
     } finally {
       setLoading(false);
     }
@@ -202,8 +202,6 @@ export function CreateReservationPage() {
         attendees: formData.attendees ? parseInt(formData.attendees) : undefined
       };
 
-      console.log('Sending reservation data:', reservationData);
-
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
         method: 'POST',
         headers: {
@@ -220,13 +218,13 @@ export function CreateReservationPage() {
         setTimeout(() => navigate('/my-reservations'), 1000);
       } else {
         const error = await response.json();
-        console.error('Server error response:', error);
+
         toast.error('예약 생성 실패', {
           description: error.message || '다시 시도해주세요.',
         });
       }
     } catch (error) {
-      console.error('Reservation creation error:', error);
+
       toast.error('예약 생성 중 오류가 발생했습니다.', {
         description: '잠시 후 다시 시도해주세요.',
       });

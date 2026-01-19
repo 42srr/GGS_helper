@@ -3,7 +3,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -53,23 +52,36 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, {
-        email: formData.email,
-        username: formData.username,
-        name: formData.name,
-        password: formData.password,
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          username: formData.username,
+          name: formData.name,
+          password: formData.password,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.message;
+        if (Array.isArray(errorMessage)) {
+          setError(errorMessage.join(', '));
+        } else if (typeof errorMessage === 'string') {
+          setError(errorMessage);
+        } else {
+          setError('회원가입에 실패했습니다.');
+        }
+        return;
+      }
+
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message;
-      if (Array.isArray(errorMessage)) {
-        setError(errorMessage.join(', '));
-      } else if (typeof errorMessage === 'string') {
-        setError(errorMessage);
-      } else {
-        setError('회원가입에 실패했습니다.');
-      }
+      setError('회원가입에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

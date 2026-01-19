@@ -26,7 +26,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Log errors for monitoring
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
-      console.error(`[${request.method}] ${request.url}:`, exception);
+
     }
 
     response.status(status).json({

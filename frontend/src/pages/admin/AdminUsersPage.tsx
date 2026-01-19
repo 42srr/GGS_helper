@@ -76,7 +76,7 @@ export function AdminUsersPage() {
         setUsers(data);
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ export function AdminUsersPage() {
         alert('상태 변경에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Toggle user status error:', error);
+
       alert('상태 변경 중 오류가 발생했습니다.');
     }
   };
@@ -161,7 +161,7 @@ export function AdminUsersPage() {
         alert('권한 변경에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Change user role error:', error);
+
       alert('권한 변경 중 오류가 발생했습니다.');
     }
   };
@@ -186,7 +186,7 @@ export function AdminUsersPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export users:', error);
+
     }
   };
 
@@ -490,7 +490,7 @@ export function AdminUsersPage() {
                                         alert('예약 금지 해제에 실패했습니다.');
                                       }
                                     } catch (error) {
-                                      console.error('Error:', error);
+
                                       alert('오류가 발생했습니다.');
                                     }
                                   }

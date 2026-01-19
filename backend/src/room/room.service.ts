@@ -44,7 +44,7 @@ export class RoomService {
         'success',
       );
     } catch (error) {
-      console.error('Failed to log room creation activity:', error);
+
     }
 
     return savedRoom;
@@ -91,7 +91,7 @@ export class RoomService {
         'info',
       );
     } catch (error) {
-      console.error('Failed to log room update activity:', error);
+
     }
 
     return updatedRoom;
@@ -106,23 +106,20 @@ export class RoomService {
   async uploadFromExcel(
     file: Express.Multer.File,
   ): Promise<{ success: number; errors: string[]; replaced: number }> {
-    console.log('Processing Excel file upload...');
 
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-    console.log('Excel data rows:', jsonData.length);
-
     // 먼저 기존 모든 회의실 데이터 삭제
-    console.log('Removing existing rooms...');
+
     const existingRooms = await this.roomRepository.find();
     const replacedCount = existingRooms.length;
 
     if (replacedCount > 0) {
       // 1단계: 모든 예약 삭제 (외래키 제약조건 해결)
-      console.log('Deleting all reservations first...');
+
       await this.reservationRepository
         .createQueryBuilder()
         .delete()
@@ -130,14 +127,13 @@ export class RoomService {
         .execute();
 
       // 2단계: 회의실 삭제
-      console.log('Now deleting all rooms...');
+
       await this.roomRepository
         .createQueryBuilder()
         .delete()
         .from(Room)
         .execute();
 
-      console.log(`Deleted ${replacedCount} existing rooms and all reservations`);
     }
 
     let successCount = 0;
@@ -161,8 +157,6 @@ export class RoomService {
           isConfirm: isConfirm,
         };
 
-        console.log(`Processing row ${i + 1}:`, roomData);
-
         // 유효성 검사
         if (!roomData.name || !roomData.location || !roomData.capacity) {
           errors.push(
@@ -173,9 +167,9 @@ export class RoomService {
 
         await this.create(roomData);
         successCount++;
-        console.log(`Successfully created room: ${roomData.name}`);
+
       } catch (error) {
-        console.error(`Error processing row ${i + 2}:`, error);
+
         errors.push(`Row ${i + 2}: ${error.message}`);
       }
     }
@@ -196,11 +190,10 @@ export class RoomService {
           'info',
         );
       } catch (error) {
-        console.error('Failed to log Excel upload activity:', error);
+
       }
     }
 
-    console.log(`Upload completed: ${successCount} success, ${errors.length} errors, ${replacedCount} replaced`);
     return { success: successCount, errors, replaced: replacedCount };
   }
 

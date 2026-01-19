@@ -50,7 +50,7 @@ export function RoomsPage() {
         setRooms(data.filter((room: Room) => room.isActive));
       }
     } catch (error) {
-      console.error('Failed to fetch rooms:', error);
+
     } finally {
       setLoading(false);
     }

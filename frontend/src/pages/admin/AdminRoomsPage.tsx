@@ -55,7 +55,7 @@ export function AdminRoomsPage() {
         setRooms(data);
       }
     } catch (error) {
-      console.error('Failed to fetch rooms:', error);
+
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export function AdminRoomsPage() {
         alert('회의실 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Delete room error:', error);
+
       alert('회의실 삭제 중 오류가 발생했습니다.');
     }
   };
@@ -109,7 +109,7 @@ export function AdminRoomsPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to download template:', error);
+
     }
   };
 
@@ -133,20 +133,13 @@ export function AdminRoomsPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export rooms:', error);
+
     }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    console.log('Selected file:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified
-    });
 
     // 파일 유효성 검사
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
@@ -165,25 +158,22 @@ export function AdminRoomsPage() {
     const formData = new FormData();
     formData.append('file', file);
 
-    console.log('Sending upload request...');
-
     // 백엔드 서버 연결 상태 확인
     try {
-      console.log('Checking server connection...');
+
       const healthCheck = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
-      console.log('Server connection status:', healthCheck.status);
 
       if (!healthCheck.ok) {
         alert('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
         return;
       }
     } catch (error) {
-      console.error('Server connection error:', error);
+
       alert('서버 연결 실패. 백엔드 서버가 실행 중인지 확인해주세요.');
       return;
     }
@@ -203,33 +193,30 @@ export function AdminRoomsPage() {
 
       clearTimeout(timeoutId);
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
       if (response.ok) {
         const result = await response.json();
-        console.log('Upload result:', result);
+
         alert(`업로드 완료!\n성공: ${result.success}개\n오류: ${result.errors.length}개\n대체: ${result.replaced || 0}개`);
         if (result.errors.length > 0) {
-          console.log('Errors:', result.errors);
+
         }
         fetchRooms();
       } else {
         const errorText = await response.text();
-        console.error('Response error:', errorText);
+
         alert(`업로드 실패: ${response.status} ${response.statusText}\n${errorText}`);
       }
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error('Request timeout');
+
           alert('요청 시간이 초과되었습니다. 파일 크기를 확인하거나 다시 시도해주세요.');
         } else {
-          console.error('Upload error:', error);
+
           alert(`업로드 중 오류가 발생했습니다: ${error.message}`);
         }
       } else {
-        console.error('Unknown error:', error);
+
         alert('업로드 중 알 수 없는 오류가 발생했습니다.');
       }
     }

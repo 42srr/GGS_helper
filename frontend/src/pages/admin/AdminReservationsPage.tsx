@@ -95,7 +95,7 @@ export function AdminReservationsPage() {
         setReservations(data);
       }
     } catch (error) {
-      console.error('Failed to fetch reservations:', error);
+
     } finally {
       setLoading(false);
     }
@@ -182,7 +182,7 @@ export function AdminReservationsPage() {
         alert(`상태 변경에 실패했습니다: ${errorData.message || '알 수 없는 오류'}`);
       }
     } catch (error) {
-      console.error('Update reservation status error:', error);
+
       alert('상태 변경 중 오류가 발생했습니다.');
     }
   };
@@ -207,7 +207,7 @@ export function AdminReservationsPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export reservations:', error);
+
     }
   };
 

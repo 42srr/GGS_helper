@@ -57,7 +57,7 @@ export class AdminService {
 
         pgDump.on('close', (code) => {
           if (code === 0) {
-            console.log('Backup created successfully:', backupPath);
+
             resolve();
           } else {
             reject(new Error(`pg_dump exited with code ${code}`));
@@ -81,7 +81,7 @@ export class AdminService {
 
       return backupId;
     } catch (error) {
-      console.error('Backup creation failed:', error);
+
       // 실패 시 빈 SQL 파일 생성 (개발용)
       const mockBackup = `-- Mock backup created at ${new Date().toISOString()}
 -- Database: ${this.dataSource.options['database']}
@@ -213,12 +213,10 @@ SELECT 'Backup completed successfully' as status;
 
       const command = `psql -h ${dbConfig['host'] || 'localhost'} -p ${dbConfig['port'] || 5432} -U ${dbConfig['username']} -d ${dbConfig['database']} -f ${backupPath}`;
 
-      console.log('Restoring backup with command:', command);
       await execAsync(command, { env });
 
-      console.log('Backup restored successfully');
     } catch (error) {
-      console.error('Backup restoration failed:', error);
+
       throw new Error('Backup restoration failed');
     }
   }
@@ -249,7 +247,7 @@ SELECT 'Backup completed successfully' as status;
         lastBackup: await this.getLastBackupTime(),
       };
     } catch (error) {
-      console.error('Failed to get system stats:', error);
+
       // 기본값 반환
       return {
         totalUsers: 0,
@@ -356,7 +354,7 @@ SELECT 'Backup completed successfully' as status;
 
       return settings;
     } catch (error) {
-      console.error('Failed to get settings:', error);
+
       // 에러 시 기본 설정 반환
       return {
         reservation: {
@@ -413,8 +411,6 @@ SELECT 'Backup completed successfully' as status;
         }
       }
 
-      console.log('Settings updated successfully');
-
       // 활동 로그 기록
       await this.logActivity(
         ActivityType.SETTINGS_UPDATED,
@@ -425,7 +421,7 @@ SELECT 'Backup completed successfully' as status;
         'success',
       );
     } catch (error) {
-      console.error('Failed to update settings:', error);
+
       throw error;
     }
   }
@@ -474,9 +470,8 @@ SELECT 'Backup completed successfully' as status;
         throw new Error(`Slack API returned ${response.status}: ${response.statusText}`);
       }
 
-      console.log('Slack test message sent successfully');
     } catch (error) {
-      console.error('Failed to send Slack test message:', error);
+
       throw new Error(`Slack 웹훅 테스트 실패: ${error.message}`);
     }
   }
@@ -549,9 +544,8 @@ SELECT 'Backup completed successfully' as status;
         throw new Error(`Slack API returned ${response.status}`);
       }
 
-      console.log('Slack notification sent successfully');
     } catch (error) {
-      console.error('Failed to send Slack notification:', error);
+
       // Slack 알림 실패는 예약 생성을 막지 않음
     }
   }
@@ -778,7 +772,7 @@ SELECT 'Backup completed successfully' as status;
         },
       };
     } catch (error) {
-      console.error('Failed to get statistics:', error);
+
       // 기본 mock 데이터 반환
       return this.getMockStatistics();
     }
@@ -846,7 +840,7 @@ SELECT 'Backup completed successfully' as status;
         XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
       );
     } catch (error) {
-      console.error('Failed to export statistics:', error);
+
       throw error;
     }
   }
@@ -905,7 +899,7 @@ SELECT 'Backup completed successfully' as status;
       if (previous === 0) return current > 0 ? 100 : 0;
       return Math.round(((current - previous) / previous) * 100 * 100) / 100;
     } catch (error) {
-      console.error('Failed to calculate growth rate:', error);
+
       return 0;
     }
   }
@@ -989,9 +983,6 @@ SELECT 'Backup completed successfully' as status;
 
   // 위험한 시스템 작업들
   async resetDatabase(): Promise<void> {
-    console.warn(
-      '⚠️ DATABASE RESET REQUESTED - This is a dangerous operation!',
-    );
 
     // 실제 운영환경에서는 이 기능을 비활성화하거나 추가 보안 검증을 해야 합니다
     if (process.env.NODE_ENV === 'production') {
@@ -1015,15 +1006,13 @@ SELECT 'Backup completed successfully' as status;
         'TRUNCATE TABLE system_settings RESTART IDENTITY CASCADE',
       );
 
-      console.log('✅ Database reset completed');
     } catch (error) {
-      console.error('❌ Database reset failed:', error);
+
       throw new Error('Failed to reset database: ' + error.message);
     }
   }
 
   async clearLogs(): Promise<void> {
-    console.log('🧹 Clearing log files...');
 
     try {
       const fs = require('fs');
@@ -1047,28 +1036,26 @@ SELECT 'Backup completed successfully' as status;
               for (const file of files) {
                 const filePath = path.join(logPath, file);
                 fs.unlinkSync(filePath);
-                console.log(`Deleted log file: ${filePath}`);
+
               }
             } else {
               // 파일인 경우 직접 삭제
               fs.unlinkSync(logPath);
-              console.log(`Deleted log file: ${logPath}`);
+
             }
           }
         } catch (error) {
-          console.warn(`Failed to delete ${logPath}:`, error.message);
+
         }
       }
 
-      console.log('✅ Log files cleared');
     } catch (error) {
-      console.error('❌ Failed to clear logs:', error);
+
       throw new Error('Failed to clear logs: ' + error.message);
     }
   }
 
   async testApiKeys(): Promise<any> {
-    console.log('🔧 Testing API keys...');
 
     const results = {
       api42: false,
@@ -1097,15 +1084,15 @@ SELECT 'Backup completed successfully' as status;
 
           if (response.status === 200) {
             results.api42 = true;
-            console.log('✅ 42 API connection test passed');
+
           } else {
-            console.log('❌ 42 API connection test failed:', response.status);
+
           }
         } catch (error) {
-          console.log('❌ 42 API connection test error:', error.message);
+
         }
       } else {
-        console.log('⚠️ 42 API credentials not configured');
+
       }
 
       // 이메일 API 테스트 (SMTP 또는 SendGrid)
@@ -1118,18 +1105,17 @@ SELECT 'Backup completed successfully' as status;
           // 이메일 설정이 있다고 가정하고 true로 설정
           // 실제 환경에서는 SMTP 연결 테스트나 API 호출을 수행
           results.email = true;
-          console.log('✅ Email API configuration found');
+
         } catch (error) {
-          console.log('❌ Email API test error:', error.message);
+
         }
       } else {
-        console.log('⚠️ Email API credentials not configured');
+
       }
     } catch (error) {
-      console.error('❌ API key tests failed:', error);
+
     }
 
-    console.log('🔧 API key test results:', results);
     return results;
   }
 
@@ -1153,7 +1139,7 @@ SELECT 'Backup completed successfully' as status;
       });
       await this.activityLogRepository.save(activityLog);
     } catch (error) {
-      console.error('Failed to log activity:', error);
+
     }
   }
 
@@ -1165,7 +1151,7 @@ SELECT 'Backup completed successfully' as status;
         take: limit,
       });
     } catch (error) {
-      console.error('Failed to get recent activities:', error);
+
       return [];
     }
   }
@@ -1182,7 +1168,7 @@ SELECT 'Backup completed successfully' as status;
         take: limit,
       });
     } catch (error) {
-      console.error('Failed to get activities by type:', error);
+
       return [];
     }
   }
@@ -1198,9 +1184,8 @@ SELECT 'Backup completed successfully' as status;
         .where('createdAt < :cutoffDate', { cutoffDate })
         .execute();
 
-      console.log(`Cleared activity logs older than ${daysOld} days`);
     } catch (error) {
-      console.error('Failed to clear old activities:', error);
+
     }
   }
 
@@ -1261,9 +1246,8 @@ SELECT 'Backup completed successfully' as status;
         }
       }
 
-      console.log('Sample activities created successfully');
     } catch (error) {
-      console.error('Failed to create sample activities:', error);
+
     }
   }
 
@@ -1293,7 +1277,7 @@ SELECT 'Backup completed successfully' as status;
       if (stats.birthtime < cutoffDate) {
         fs.unlinkSync(filePath);
         deletedCount++;
-        console.log(`🗑️ Deleted old backup: ${file}`);
+
       }
     }
 
@@ -1406,9 +1390,8 @@ SELECT 'Backup completed successfully' as status;
         'info',
       );
 
-      console.log(`Backup schedule updated: enabled=${enabled}, retentionDays=${retentionDays}, backupHour=${backupHour}`);
     } catch (error) {
-      console.error('Failed to update backup schedule:', error);
+
       throw error;
     }
   }

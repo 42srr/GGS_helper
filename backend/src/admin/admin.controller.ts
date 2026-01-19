@@ -96,13 +96,13 @@ export class AdminController {
 
   @Get('system/stats')
   async getSystemStats() {
-    console.log('Admin system stats endpoint called');
+
     try {
       const stats = await this.adminService.getSystemStats();
-      console.log('System stats result:', stats);
+
       return stats;
     } catch (error) {
-      console.error('System stats error:', error);
+
       throw error;
     }
   }

@@ -46,9 +46,7 @@ export class ReservationService {
       .execute();
 
     if (result.affected && result.affected > 0) {
-      console.log(
-        `Updated ${result.affected} reservations to awaiting_checkout status`
-      );
+
     }
   }
 
@@ -64,9 +62,7 @@ export class ReservationService {
       .execute();
 
     if (result.affected && result.affected > 0) {
-      console.log(
-        `Updated ${result.affected} reservations to finished status (with photo)`
-      );
+
     }
   }
 
@@ -84,9 +80,6 @@ export class ReservationService {
     });
 
     if (overdueReservations.length > 0) {
-      console.warn(
-        `Found ${overdueReservations.length} overdue checkout photos`
-      );
 
       // Slack 알림 발송 (관리자용)
       if (overdueReservations.length > 0) {
@@ -127,7 +120,6 @@ export class ReservationService {
     });
 
     if (expiredReservations.length > 0) {
-      console.log(`Found ${expiredReservations.length} reservations to mark as no-show`);
 
       for (const reservation of expiredReservations) {
         await this.markAsNoShow(reservation);
@@ -166,7 +158,7 @@ export class ReservationService {
       }
 
       await this.userRepository.save(user);
-      console.log(`User ${user.userId} no-show count: ${user.noShowCount}, banned until: ${user.banUntil || 'permanent'}`);
+
     }
   }
 
@@ -259,7 +251,7 @@ export class ReservationService {
 
     // Slack 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
     this.sendSlackNotificationIfEnabled(savedReservation, user, room).catch((err) => {
-      console.error('Failed to send Slack notification:', err);
+
     });
 
     return savedReservation;
@@ -290,7 +282,7 @@ export class ReservationService {
         );
       }
     } catch (error) {
-      console.error('Slack notification error:', error);
+
       // 알림 실패는 예약 생성을 막지 않음
     }
   }
@@ -651,13 +643,11 @@ export class ReservationService {
 
       if (user) {
         user.lateCount += 1;
-        console.log(`User ${user.userId} late count: ${user.lateCount}`);
 
         // 지각 3회시 노쇼 카운트 1회 추가 및 즉시 7일간 예약 금지
         if (user.lateCount >= 3) {
           user.noShowCount += 1;
           user.lateCount = 0; // 지각 카운트 초기화
-          console.log(`User ${user.userId} reached 3 lates. No-show count increased to: ${user.noShowCount}`);
 
           // 즉시 7일간 예약 금지
           user.isReservationBanned = true;
@@ -670,7 +660,6 @@ export class ReservationService {
             user.banUntil = null; // 영구 금지 (해제일 없음)
           }
 
-          console.log(`User ${user.userId} banned until ${user.banUntil || 'permanent'}`);
         }
 
         await this.userRepository.save(user);

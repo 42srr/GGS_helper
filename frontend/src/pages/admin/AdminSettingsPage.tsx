@@ -70,11 +70,11 @@ export function AdminSettingsPage() {
         const data = await response.json();
         setSettings(data);
       } else {
-        console.error('Failed to fetch settings:', response.status);
+
         alert('설정을 불러오는데 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+
       alert('설정을 불러오는데 실패했습니다.');
     }
   };
@@ -97,11 +97,11 @@ export function AdminSettingsPage() {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {
-        console.error('Failed to save settings:', response.status);
+
         alert('설정 저장에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to save settings:', error);
+
       alert('설정 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -146,7 +146,7 @@ export function AdminSettingsPage() {
         alert(`❌ Slack 메시지 전송 실패: ${error.message || '알 수 없는 오류'}`);
       }
     } catch (error) {
-      console.error('Failed to test Slack webhook:', error);
+
       alert('Slack 웹훅 테스트 중 오류가 발생했습니다.');
     } finally {
       setTestingSlack(false);

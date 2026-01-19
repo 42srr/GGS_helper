@@ -33,7 +33,7 @@ export class UserController {
       try {
         return JSON.parse(field);
       } catch (error) {
-        console.error('Failed to parse JSON field:', error);
+
         return null;
       }
     }

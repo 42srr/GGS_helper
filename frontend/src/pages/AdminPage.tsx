@@ -79,7 +79,7 @@ export function AdminPage() {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch system stats');
+
     }
   };
 
@@ -102,7 +102,7 @@ export function AdminPage() {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch statistics');
+
     }
   };
 
@@ -124,7 +124,7 @@ export function AdminPage() {
         await createSampleActivities();
       }
     } catch (error) {
-      console.error('Failed to fetch recent activities');
+
     }
   };
 
@@ -140,12 +140,12 @@ export function AdminPage() {
       });
 
       if (response.ok) {
-        console.log('Sample activities created');
+
         // 샘플 데이터 생성 후 다시 활동 로그 가져오기
         fetchRecentActivities();
       }
     } catch (error) {
-      console.error('Failed to create sample activities:', error);
+
     }
   };
 
@@ -194,7 +194,7 @@ export function AdminPage() {
           break;
       }
     } catch (error) {
-      console.error('Failed to execute action:', error);
+
       alert('작업 실행에 실패했습니다.');
     } finally {
       setLoading(false);
