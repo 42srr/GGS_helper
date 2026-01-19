@@ -1,18 +1,22 @@
 # 42GGS_helper
 
 # 개요
-
-- 42경산 생활에 도움이 되는 서비스를 제공함
-- 42경산의 개발 동아리인 GGS에서 제작, 유지, 보수 중
+- 42 경산의 회의실 및 스터디룸을 예약할 수 있는 서비스
+- ReactJS, NestJS, PostgreSQL을 사용하여 개발 함
+- 서비스는 Docker Compose 를 이용해 컨테이너화 하여 배포
 
 # 실행방법(개발환경)
 
 ## 1. DB 컨테이너 실행
 
-- 도커 엔진 설치 필요(도커 데스크탑도 ㄱㅊ)
-- backend/ 경로에 docker-compose.yml 파일이 존재
+- 도커 엔진 설치 필요
+- development/ 경로에 docker-compose.yml 파일이 존재
 - .env.example 파일을 참고해서 .env 파일 생성 및 정보 입력
-- docker compose up -d 명령어로 DB 컨테이너 실행
+  ```bash
+  cd development
+  cp .env.example .env
+  docker compose up -d
+  ```
 
 ## 2. 백엔드 및 프론트엔드 개발 서버 실행
 

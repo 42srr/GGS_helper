@@ -4,32 +4,42 @@
 
 ## 사용 방법
 
-### 1. 데이터베이스 시작
+### 1. 환경 변수 설정
+
+최초 1회만 실행:
 
 ```bash
-cd develop/db
+cd development
+cp .env.example .env
+# 필요시 .env 파일 수정
+```
+
+### 2. 데이터베이스 시작
+
+```bash
+cd development
 docker compose up -d
 ```
 
-### 2. 데이터베이스 상태 확인
+### 3. 데이터베이스 상태 확인
 
 ```bash
 docker compose ps
 ```
 
-### 3. 데이터베이스 로그 확인
+### 4. 데이터베이스 로그 확인
 
 ```bash
 docker compose logs -f postgres
 ```
 
-### 4. 데이터베이스 중지
+### 5. 데이터베이스 중지
 
 ```bash
 docker compose down
 ```
 
-### 5. 데이터베이스 완전 초기화 (데이터 삭제)
+### 6. 데이터베이스 완전 초기화 (데이터 삭제)
 
 ```bash
 # 컨테이너 및 볼륨 삭제
@@ -41,11 +51,13 @@ docker compose up -d
 
 ## 데이터베이스 접속 정보
 
+환경변수로 설정 가능 (`.env` 파일 참조):
+
 - **Host**: localhost
-- **Port**: 5433 (mapped from container port 5432)
-- **Database**: ggs_helper
-- **User**: postgres
-- **Password**: postgres
+- **Port**: 5433 (기본값, `.env`에서 변경 가능)
+- **Database**: ggs_helper (기본값, `.env`에서 변경 가능)
+- **User**: postgres (기본값, `.env`에서 변경 가능)
+- **Password**: postgres (기본값, `.env`에서 변경 가능)
 
 ## 직접 접속 (psql)
 
