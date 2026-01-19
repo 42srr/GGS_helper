@@ -84,7 +84,7 @@ export function AdminReservationsPage() {
   const fetchReservations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -189,7 +189,7 @@ export function AdminReservationsPage() {
 
   const exportToExcel = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

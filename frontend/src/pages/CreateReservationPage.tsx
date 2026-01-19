@@ -58,7 +58,7 @@ export function CreateReservationPage() {
 
   const checkReservationStatus = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/reservation-status', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/reservation-status`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -85,7 +85,7 @@ export function CreateReservationPage() {
 
     setCheckingConflict(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/check-conflict', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/check-conflict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export function CreateReservationPage() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -204,7 +204,7 @@ export function CreateReservationPage() {
 
       console.log('Sending reservation data:', reservationData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

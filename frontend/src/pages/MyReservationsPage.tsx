@@ -49,7 +49,7 @@ export function MyReservationsPage() {
   const fetchMyReservations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/my', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/my`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

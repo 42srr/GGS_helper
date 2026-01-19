@@ -65,7 +65,7 @@ export function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -168,7 +168,7 @@ export function AdminUsersPage() {
 
   const exportToExcel = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

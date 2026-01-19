@@ -42,7 +42,7 @@ export function AdminRoomsPage() {
       setLoading(true);
       const url = search
         ? `${import.meta.env.VITE_API_BASE_URL}/rooms?search=${encodeURIComponent(search)}`
-        : `${import.meta.env.VITE_API_BASE_URL}/rooms';
+        : `${import.meta.env.VITE_API_BASE_URL}/rooms`;
 
       const response = await fetch(url, {
         headers: {
@@ -91,7 +91,7 @@ export function AdminRoomsPage() {
 
   const downloadTemplate = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/template', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/template`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -115,7 +115,7 @@ export function AdminRoomsPage() {
 
   const exportRooms = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -170,7 +170,7 @@ export function AdminRoomsPage() {
     // 백엔드 서버 연결 상태 확인
     try {
       console.log('Checking server connection...');
-      const healthCheck = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms', {
+      const healthCheck = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -192,7 +192,7 @@ export function AdminRoomsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
