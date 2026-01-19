@@ -142,9 +142,6 @@ ecosystem.config.js
 # claude
 /.claude
 
-# documents
-/docs
-
 # ============================================
 # IDEs and Editors
 # ============================================

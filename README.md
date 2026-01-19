@@ -1,86 +1,170 @@
 # GGS Helper (룸잇)
 
-## 개요
-회의실 및 스터디룸 예약 관리 시스템
+> 회의실 및 스터디룸 예약 관리 시스템
 
-- 회의실/스터디룸 실시간 예약 및 현황 확인
-- 관리자 페이지를 통한 예약 관리, 통계, 백업 기능
-- 체크아웃 인증 시스템 및 사용 후기 관리
-- ReactJS, NestJS, PostgreSQL 기반의 풀스택 웹 애플리케이션
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-# 실행방법(개발환경)
+## 📋 목차
 
-## 1. DB 컨테이너 실행
+- [개요](#개요)
+- [주요 기능](#주요-기능)
+- [빠른 시작](#빠른-시작)
+- [기술 스택](#기술-스택)
+- [문서](#문서)
+- [개발자](#개발자)
 
-- 도커 엔진 설치 필요
-- developments/ 경로에 docker-compose.yml 파일이 존재
-- .env.example 파일을 참고해서 .env 파일 생성 및 정보 입력
-  ```bash
-  cd developments
-  cp .env.example .env
-  docker compose up -d
-  ```
+## 🎯 개요
 
-## 2. 백엔드 및 프론트엔드 개발 서버 실행
+GGS Helper는 회의실 및 스터디룸을 효율적으로 관리하기 위한 웹 기반 예약 시스템입니다.
 
-- frontend 경로 및 backend 경로에서 npm install 명령어 실행
-- .env 파일 채워넣기
-- frontend 경로에서 npm run dev 명령어 실행
-- backend 경로에서 npm run start:dev 명령어 실행
+**핵심 가치:**
+- 📅 실시간 예약 현황 확인
+- 🔒 안전한 인증 및 권한 관리
+- 📊 통계 및 분석 기능
+- 📱 모바일 반응형 지원
 
-# 주요 기능
+## ✨ 주요 기능
 
-## 사용자 기능
+### 사용자 기능
 - **실시간 예약 현황**: 달력 형식으로 예약 현황 확인
-- **회의실 예약**: 시간대별 예약 생성 및 충돌 검증
+- **회의실 예약**: 시간대별 예약 생성 및 충돌 자동 검증
 - **체크아웃 인증**: 사진 업로드를 통한 퇴실 인증
 - **예약 관리**: 내 예약 목록 조회 및 취소
 
-## 관리자 기능
+### 관리자 기능
 - **예약 관리**: 전체 예약 조회, 승인, 취소
 - **회의실 관리**: 회의실 정보 수정, Excel 일괄 업로드
 - **사용자 관리**: 회원 정보 조회, 권한 관리
-- **통계**: 예약 통계 및 리포트 생성
+- **통계 및 리포트**: 예약 통계 및 사용 현황 분석
 - **백업/복원**: 데이터베이스 백업 및 복원 기능
 
-# 기술 스택
+## 🚀 빠른 시작
 
-## Frontend
-- **React 18** + TypeScript
-- **Vite** - 빌드 도구
-- **React Router** - 라우팅
-- **Shadcn/ui** - UI 컴포넌트 라이브러리
-- **Tailwind CSS** - 스타일링
-- **Sonner** - Toast 알림
+### 필수 요구사항
 
-## Backend
-- **NestJS** - Node.js 프레임워크
-- **TypeORM** - ORM
-- **JWT** - 인증/인가
-- **class-validator** - DTO 검증
-- **Throttler** - Rate Limiting (보안)
+- Node.js 18+
+- Docker & Docker Compose
+- PostgreSQL 16 (Docker 사용 시 불필요)
 
-## Database
-- **PostgreSQL 16** - 관계형 데이터베이스
+### 설치 및 실행
 
-## DevOps
-- **Docker Compose** - 컨테이너 오케스트레이션
-- **Git** - 버전 관리
+```bash
+# 1. 저장소 클론
+git clone <repository-url>
+cd GGS_helper
 
-## 보안 기능
+# 2. 환경변수 설정
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+cp developments/.env.example developments/.env
+
+# 3. 데이터베이스 시작
+cd developments
+docker-compose up -d
+cd ..
+
+# 4. 의존성 설치
+cd backend && npm install
+cd ../frontend && npm install
+
+# 5. 개발 서버 실행
+# 터미널 1 - 백엔드
+cd backend
+npm run start:dev
+
+# 터미널 2 - 프론트엔드
+cd frontend
+npm run dev
+```
+
+### 접속 정보
+
+- **프론트엔드**: http://localhost:6111
+- **백엔드 API**: http://localhost:6112
+- **데이터베이스**: localhost:6113
+
+### 기본 관리자 계정
+
+```
+이메일: admin@ggs.com
+사용자 ID: admin
+비밀번호: Admin1234!
+```
+
+## 🛠 기술 스택
+
+### Frontend
+- React 18 + TypeScript
+- Vite (빌드 도구)
+- React Router (라우팅)
+- Shadcn/ui (UI 컴포넌트)
+- Tailwind CSS (스타일링)
+- Sonner (Toast 알림)
+
+### Backend
+- NestJS (Node.js 프레임워크)
+- TypeORM (ORM)
+- JWT (인증/인가)
+- class-validator (DTO 검증)
+- Throttler (Rate Limiting)
+
+### Database
+- PostgreSQL 16
+
+### DevOps
+- Docker Compose
+- Git
+
+### 보안 기능
 - JWT 기반 인증 및 토큰 블랙리스트
 - Rate Limiting (IP 기반)
 - SQL Injection 방지 (TypeORM)
 - XSS 방지
 - 비밀번호 암호화 (bcrypt)
 
-# 개발자
+## 📚 문서
 
-## Frontend
+상세한 문서는 [docs/](./docs) 폴더를 참조하세요.
 
+### 설치 및 설정
+- [상세 설치 가이드](./docs/setup/installation.md)
+- [환경변수 설정](./docs/setup/environment.md)
+- [Docker 설정](./docs/setup/docker.md)
+
+### 개발 가이드
+- [시스템 아키텍처](./docs/development/architecture.md)
+- [API 가이드](./docs/development/api-guide.md)
+- [데이터베이스 스키마](./docs/development/database.md)
+- [프론트엔드 구조](./docs/development/frontend.md)
+- [코딩 스타일 가이드](./docs/development/coding-style.md)
+
+### 기능 문서
+- [인증/인가 시스템](./docs/features/authentication.md)
+- [예약 시스템](./docs/features/reservations.md)
+- [관리자 기능](./docs/features/admin.md)
+- [보안 기능](./docs/features/security.md)
+
+### 배포 및 운영
+- [프로덕션 배포](./docs/deployment/production.md)
+- [문제 해결 가이드](./docs/deployment/troubleshooting.md)
+- [백업 및 복원](./docs/maintenance/backup.md)
+
+## 👥 개발자
+
+### Frontend
 - yutsong
 - kjung
 
-## Backend
-
+### Backend
 - yutsong
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스를 따릅니다.
+
+## 🤝 기여
+
+버그 리포트 및 기능 제안은 Issues를 통해 제출해주세요.
