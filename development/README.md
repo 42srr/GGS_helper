@@ -54,7 +54,7 @@ docker compose up -d
 환경변수로 설정 가능 (`.env` 파일 참조):
 
 - **Host**: localhost
-- **Port**: 5433 (기본값, `.env`에서 변경 가능)
+- **Port**: 6113 (기본값, `.env`에서 변경 가능)
 - **Database**: ggs_helper (기본값, `.env`에서 변경 가능)
 - **User**: postgres (기본값, `.env`에서 변경 가능)
 - **Password**: postgres (기본값, `.env`에서 변경 가능)
@@ -71,7 +71,7 @@ docker exec -it ggs_helper_postgres psql -U postgres -d ggs_helper
 
 ```env
 DATABASE_HOST=localhost
-DATABASE_PORT=5433
+DATABASE_PORT=6113
 DATABASE_USER=postgres
 DATABASE_PASSWORD=postgres
 DATABASE_NAME=ggs_helper
