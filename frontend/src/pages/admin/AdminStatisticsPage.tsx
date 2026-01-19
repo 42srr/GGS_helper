@@ -88,7 +88,7 @@ export function AdminStatisticsPage() {
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/admin/statistics?period=${selectedPeriod}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics?period=${selectedPeriod}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -108,7 +108,7 @@ export function AdminStatisticsPage() {
 
   const handleExportReport = async () => {
     try {
-      const response = await fetch('http://localhost:3001/admin/statistics/export', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

@@ -62,7 +62,7 @@ export function AdminBackupPage() {
 
   const fetchBackups = async () => {
     try {
-      const response = await fetch('http://localhost:3001/admin/backup/list', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/list', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -81,7 +81,7 @@ export function AdminBackupPage() {
 
   const fetchBackupSchedule = async () => {
     try {
-      const response = await fetch('http://localhost:3001/admin/backup/schedule', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -122,7 +122,7 @@ export function AdminBackupPage() {
   const handleSaveSchedule = async () => {
     setSavingSchedule(true);
     try {
-      const response = await fetch('http://localhost:3001/admin/backup/schedule', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export function AdminBackupPage() {
     }, 200);
 
     try {
-      const response = await fetch('http://localhost:3001/admin/backup/create', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/create', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -249,7 +249,7 @@ export function AdminBackupPage() {
 
   const handleDownloadBackup = async (backupId: string, backupName: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/admin/backup/download/${backupId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/download/${backupId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -275,7 +275,7 @@ export function AdminBackupPage() {
     if (!confirm('이 백업을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/admin/backup/${backupId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/${backupId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

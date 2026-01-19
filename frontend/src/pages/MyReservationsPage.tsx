@@ -49,7 +49,7 @@ export function MyReservationsPage() {
   const fetchMyReservations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/reservations/my', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/reservations/my', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -154,7 +154,7 @@ export function MyReservationsPage() {
 
   const handleCheckIn = async (reservationId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/reservations/${reservationId}/check-in`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/check-in`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -178,7 +178,7 @@ export function MyReservationsPage() {
     // API 호출하여 awaiting_checkout 상태로 전환
     try {
       const response = await fetch(
-        `http://localhost:3001/reservations/${reservation.reservationId}/early-return`,
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/early-return`,
         {
           method: 'POST',
           headers: {
@@ -204,7 +204,7 @@ export function MyReservationsPage() {
   const handleCancelReservation = async (reservationId: number) => {
     if (confirm('정말로 이 예약을 취소하시겠습니까?')) {
       try {
-        const response = await fetch(`http://localhost:3001/reservations/${reservationId}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

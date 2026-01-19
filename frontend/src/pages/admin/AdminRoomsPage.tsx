@@ -41,8 +41,8 @@ export function AdminRoomsPage() {
     try {
       setLoading(true);
       const url = search
-        ? `http://localhost:3001/rooms?search=${encodeURIComponent(search)}`
-        : 'http://localhost:3001/rooms';
+        ? `${import.meta.env.VITE_API_BASE_URL}/rooms?search=${encodeURIComponent(search)}`
+        : '${import.meta.env.VITE_API_BASE_URL}/rooms';
 
       const response = await fetch(url, {
         headers: {
@@ -70,7 +70,7 @@ export function AdminRoomsPage() {
     if (!confirm('정말로 이 회의실을 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/rooms/${roomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/${roomId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -91,7 +91,7 @@ export function AdminRoomsPage() {
 
   const downloadTemplate = async () => {
     try {
-      const response = await fetch('http://localhost:3001/rooms/template', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/rooms/template', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -115,7 +115,7 @@ export function AdminRoomsPage() {
 
   const exportRooms = async () => {
     try {
-      const response = await fetch('http://localhost:3001/rooms/export', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/rooms/export', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -170,7 +170,7 @@ export function AdminRoomsPage() {
     // 백엔드 서버 연결 상태 확인
     try {
       console.log('Checking server connection...');
-      const healthCheck = await fetch('http://localhost:3001/rooms', {
+      const healthCheck = await fetch('${import.meta.env.VITE_API_BASE_URL}/rooms', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -192,7 +192,7 @@ export function AdminRoomsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
 
-      const response = await fetch('http://localhost:3001/rooms/upload', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/rooms/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

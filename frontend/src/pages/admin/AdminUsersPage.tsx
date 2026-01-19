@@ -65,7 +65,7 @@ export function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/users', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/users', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -122,7 +122,7 @@ export function AdminUsersPage() {
 
   const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3001/users/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${userId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ export function AdminUsersPage() {
 
   const changeUserRole = async (userId: number, newRole: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/users/${userId}/role`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${userId}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export function AdminUsersPage() {
 
   const exportToExcel = async () => {
     try {
-      const response = await fetch('http://localhost:3001/users/export', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/users/export', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -472,7 +472,7 @@ export function AdminUsersPage() {
                                 onClick={async () => {
                                   if (confirm('예약 금지를 해제하시겠습니까?')) {
                                     try {
-                                      const response = await fetch(`http://localhost:3001/users/${user.userId}/reservation-ban`, {
+                                      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${user.userId}/reservation-ban`, {
                                         method: 'PATCH',
                                         headers: {
                                           'Content-Type': 'application/json',

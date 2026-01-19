@@ -10,10 +10,10 @@
 ## 1. DB 컨테이너 실행
 
 - 도커 엔진 설치 필요
-- development/ 경로에 docker-compose.yml 파일이 존재
+- developments/ 경로에 docker-compose.yml 파일이 존재
 - .env.example 파일을 참고해서 .env 파일 생성 및 정보 입력
   ```bash
-  cd development
+  cd developments
   cp .env.example .env
   docker compose up -d
   ```

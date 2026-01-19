@@ -71,7 +71,7 @@ export const CheckoutPhotoModal: React.FC<CheckoutPhotoModalProps> = ({
       }
 
       const response = await fetch(
-        `http://localhost:3001/reservations/${reservation.reservationId}/checkout-photo`,
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/checkout-photo`,
         {
           method: 'POST',
           headers: {

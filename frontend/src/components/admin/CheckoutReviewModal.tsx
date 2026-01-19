@@ -51,7 +51,7 @@ export const CheckoutReviewModal: React.FC<CheckoutReviewModalProps> = ({
 
     try {
       const response = await fetch(
-        `http://localhost:3001/reservations/${reservation.reservationId}/checkout-photo`,
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/checkout-photo`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -200,7 +200,7 @@ export const CheckoutReviewModal: React.FC<CheckoutReviewModalProps> = ({
                 </h3>
                 <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
                   <img
-                    src={`http://localhost:3001${photoData.photoUrl}`}
+                    src={`${import.meta.env.VITE_API_BASE_URL}${photoData.photoUrl}`}
                     alt="체크아웃 사진"
                     className="w-full h-auto object-contain max-h-96"
                     onError={(e) => {
@@ -214,7 +214,7 @@ export const CheckoutReviewModal: React.FC<CheckoutReviewModalProps> = ({
                   * 이미지를 클릭하여 새 탭에서 원본 크기로 볼 수 있습니다
                 </p>
                 <a
-                  href={`http://localhost:3001${photoData.photoUrl}`}
+                  href={`${import.meta.env.VITE_API_BASE_URL}${photoData.photoUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 hover:text-blue-700 underline"

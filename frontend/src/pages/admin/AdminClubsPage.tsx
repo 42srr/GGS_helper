@@ -60,7 +60,7 @@ export function AdminClubsPage() {
   const fetchClubs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/clubs/admin/all', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/clubs/admin/all', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -118,7 +118,7 @@ export function AdminClubsPage() {
     if (!confirm('이 동아리를 승인하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/clubs/admin/${clubId}/approve`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/approve`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -141,7 +141,7 @@ export function AdminClubsPage() {
     if (!confirm('이 동아리를 거부하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/clubs/admin/${clubId}/reject`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/reject`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

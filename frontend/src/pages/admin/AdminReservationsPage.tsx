@@ -84,7 +84,7 @@ export function AdminReservationsPage() {
   const fetchReservations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/reservations', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/reservations', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -165,7 +165,7 @@ export function AdminReservationsPage() {
 
   const handleStatusChange = async (reservationId: number, newStatus: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/reservations/admin/${reservationId}/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/admin/${reservationId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ export function AdminReservationsPage() {
 
   const exportToExcel = async () => {
     try {
-      const response = await fetch('http://localhost:3001/reservations/export', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/reservations/export', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

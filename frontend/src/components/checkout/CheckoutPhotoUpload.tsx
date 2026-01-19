@@ -60,7 +60,7 @@ export function CheckoutPhotoUpload({
       }
 
       const response = await fetch(
-        `http://localhost:3001/reservations/${reservationId}/checkout-photo`,
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/checkout-photo`,
         {
           method: 'POST',
           headers: {

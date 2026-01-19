@@ -26,12 +26,12 @@ export function ReservationsPage() {
     try {
       setLoading(true);
       const [reservationsResponse, roomsResponse] = await Promise.all([
-        fetch('http://localhost:3001/reservations', {
+        fetch('${import.meta.env.VITE_API_BASE_URL}/reservations', {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         }),
-        fetch('http://localhost:3001/rooms', {
+        fetch('${import.meta.env.VITE_API_BASE_URL}/rooms', {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },

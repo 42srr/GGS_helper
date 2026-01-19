@@ -98,7 +98,7 @@ export function useUserStats() {
 
       console.log(`Making request to: ${endpoint} (${method})`);
 
-      const response = await fetch(`http://localhost:3001${endpoint}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
         method,
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

@@ -26,7 +26,7 @@ export function CheckoutPhotoView({ reservationId }: CheckoutPhotoViewProps) {
   const fetchCheckoutPhoto = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3001/reservations/${reservationId}/checkout-photo`,
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/checkout-photo`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -95,7 +95,7 @@ export function CheckoutPhotoView({ reservationId }: CheckoutPhotoViewProps) {
           {/* 사진 표시 */}
           {!imageError ? (
             <img
-              src={`http://localhost:3001${photoData.photoUrl}`}
+              src={`${import.meta.env.VITE_API_BASE_URL}${photoData.photoUrl}`}
               alt="Checkout verification"
               className="w-full rounded-lg shadow-md"
               onError={() => setImageError(true)}

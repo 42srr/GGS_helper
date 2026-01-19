@@ -40,7 +40,7 @@ export function CreateRoomPage() {
         isConfirm: formData.isConfirm
       };
 
-      const response = await fetch('http://localhost:3001/rooms', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/rooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
