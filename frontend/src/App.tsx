@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { PublicReservationsPage } from './pages/PublicReservationsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -20,10 +21,11 @@ import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Toaster />
-        <Routes>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Toaster />
+          <Routes>
           <Route path="/" element={<PublicReservationsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -67,6 +69,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
