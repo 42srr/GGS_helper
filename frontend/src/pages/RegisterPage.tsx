@@ -26,6 +26,13 @@ export function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    // Username 검증
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(formData.username)) {
+      setError('사용자 ID는 영문, 숫자, 하이픈(-), 언더스코어(_)만 사용 가능합니다.');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
@@ -33,6 +40,13 @@ export function RegisterPage() {
 
     if (formData.password.length < 8) {
       setError('비밀번호는 최소 8자 이상이어야 합니다.');
+      return;
+    }
+
+    // 비밀번호 복잡도 검증 (대문자, 소문자, 숫자 포함)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(formData.password)) {
+      setError('비밀번호는 대문자, 소문자, 숫자를 모두 포함해야 합니다.');
       return;
     }
 
@@ -48,7 +62,14 @@ export function RegisterPage() {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.message || '회원가입에 실패했습니다.');
+      const errorMessage = err.response?.data?.message;
+      if (Array.isArray(errorMessage)) {
+        setError(errorMessage.join(', '));
+      } else if (typeof errorMessage === 'string') {
+        setError(errorMessage);
+      } else {
+        setError('회원가입에 실패했습니다.');
+      }
     } finally {
       setIsLoading(false);
     }
