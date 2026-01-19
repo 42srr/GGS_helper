@@ -60,7 +60,7 @@ export function AdminClubsPage() {
   const fetchClubs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/clubs/admin/all', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/all', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },

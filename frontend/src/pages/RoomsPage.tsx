@@ -36,7 +36,7 @@ export function RoomsPage() {
       setLoading(true);
       const url = search
         ? `${import.meta.env.VITE_API_BASE_URL}/rooms?search=${encodeURIComponent(search)}`
-        : '${import.meta.env.VITE_API_BASE_URL}/rooms';
+        : `${import.meta.env.VITE_API_BASE_URL}/rooms';
 
       const response = await fetch(url, {
         headers: {

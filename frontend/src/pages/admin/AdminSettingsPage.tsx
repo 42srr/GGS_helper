@@ -60,7 +60,7 @@ export function AdminSettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/settings', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -84,7 +84,7 @@ export function AdminSettingsPage() {
     setSaved(false);
 
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/settings', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ export function AdminSettingsPage() {
 
     setTestingSlack(true);
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/settings/test-slack', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/test-slack', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

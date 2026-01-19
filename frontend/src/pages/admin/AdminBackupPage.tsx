@@ -62,7 +62,7 @@ export function AdminBackupPage() {
 
   const fetchBackups = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/list', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/list', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -81,7 +81,7 @@ export function AdminBackupPage() {
 
   const fetchBackupSchedule = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -122,7 +122,7 @@ export function AdminBackupPage() {
   const handleSaveSchedule = async () => {
     setSavingSchedule(true);
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export function AdminBackupPage() {
     }, 200);
 
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/backup/create', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/create', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

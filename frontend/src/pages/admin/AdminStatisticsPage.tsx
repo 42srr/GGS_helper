@@ -108,7 +108,7 @@ export function AdminStatisticsPage() {
 
   const handleExportReport = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
