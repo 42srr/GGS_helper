@@ -121,7 +121,9 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Rate Limit 초과 (60초에 5번)' })
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  async login(@Body() loginDto: LoginDto) {
-    return await this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Req() req: any) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return await this.authService.login(loginDto, ipAddress, userAgent);
   }
 }

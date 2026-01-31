@@ -7,6 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { SlackService } from './services/slack.service';
+import { AdminService } from '../admin/admin.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -17,11 +18,11 @@ export class AuthService {
     private userService: UserService,
     private tokenBlacklistService: TokenBlacklistService,
     private slackService: SlackService,
+    private adminService: AdminService,
   ) {}
 
   async logout(userId: number, token: string): Promise<void> {
     if (!token) {
-
       return;
     }
 
@@ -30,7 +31,6 @@ export class AuthService {
       const decoded = this.jwtService.decode(token) as any;
 
       if (!decoded || !decoded.exp) {
-
         return;
       }
 
@@ -39,15 +39,15 @@ export class AuthService {
       const expiresIn = decoded.exp - currentTime;
 
       if (expiresIn <= 0) {
-
         return;
       }
 
       // 토큰을 블랙리스트에 추가
       await this.tokenBlacklistService.addToBlacklist(token, expiresIn);
 
+      // 세션 종료
+      await this.adminService.endSession(userId);
     } catch (error) {
-
       throw error;
     }
   }
@@ -83,7 +83,11 @@ export class AuthService {
     return { message: '회원가입이 완료되었습니다. 로그인해주세요.' };
   }
 
-  async login(loginDto: LoginDto): Promise<{
+  async login(
+    loginDto: LoginDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{
     access_token: string;
     user: {
       userId: number;
@@ -115,6 +119,9 @@ export class AuthService {
 
     // 마지막 로그인 시간 업데이트
     await this.userService.updateLastLogin(user.userId);
+
+    // 세션 생성
+    await this.adminService.createSession(user.userId, ipAddress, userAgent);
 
     return {
       access_token: accessToken,

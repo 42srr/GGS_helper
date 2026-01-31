@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import { SystemSettings } from './entities/system-settings.entity';
 import { ActivityLog, ActivityType } from './entities/activity-log.entity';
+import { UserSession } from './entities/user-session.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -13,6 +14,8 @@ const execAsync = promisify(exec);
 
 @Injectable()
 export class AdminService {
+  private serverStartTime: Date = new Date();
+
   constructor(
     @InjectDataSource()
     private dataSource: DataSource,
@@ -20,6 +23,8 @@ export class AdminService {
     private settingsRepository: Repository<SystemSettings>,
     @InjectRepository(ActivityLog)
     private activityLogRepository: Repository<ActivityLog>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
   ) {}
 
   async createBackup(): Promise<string> {
@@ -615,167 +620,185 @@ SELECT 'Backup completed successfully' as status;
 
   // 통계 관련 메서드들
   async getStatistics(period: string = '30d'): Promise<any> {
-    try {
-      const days = this.parsePeriodToDays(period);
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+    const days = this.parsePeriodToDays(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
-      // 전체 통계
-      const totalUsers = await this.dataSource.query(
-        'SELECT COUNT(*) FROM users',
-      );
-      const totalRooms = await this.dataSource.query(
-        'SELECT COUNT(*) FROM room',
-      );
-      const totalReservations = await this.dataSource.query(
-        'SELECT COUNT(*) FROM reservation',
-      );
-      const activeReservations = await this.dataSource.query(
-        `SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()`,
-      );
+    // 전체 통계
+    const totalUsers = await this.dataSource.query(
+      'SELECT COUNT(*) FROM users',
+    );
+    const totalRooms = await this.dataSource.query(
+      'SELECT COUNT(*) FROM room',
+    );
+    const totalReservations = await this.dataSource.query(
+      'SELECT COUNT(*) FROM reservation',
+    );
+    const activeReservations = await this.dataSource.query(
+      `SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()`,
+    );
 
-      // 성장률 계산
-      const userGrowth = await this.calculateGrowthRate('users', days);
-      const reservationGrowth = await this.calculateGrowthRate(
-        'reservation',
-        days,
-      );
+    // 성장률 계산
+    const userGrowth = await this.calculateGrowthRate('users', days);
+    const reservationGrowth = await this.calculateGrowthRate(
+      'reservation',
+      days,
+    );
 
-      // 예약 상태별 통계 (status 필드 제거됨 - 빈 결과 반환)
-      const reservationsByStatus = [];
+    // 예약 상태별 통계
+    const reservationsByStatus = await this.dataSource.query(
+      `
+      SELECT
+        reservation_status as status,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY reservation_status
+    `,
+      [startDate],
+    );
 
-      // 월별 예약 추이
-      const monthlyReservations = await this.dataSource.query(
-        `
-        SELECT
-          TO_CHAR(reservation_createdat, 'YYYY-MM') as month,
-          COUNT(*) as count
-        FROM reservation
-        WHERE reservation_createdat >= $1
-        GROUP BY TO_CHAR(reservation_createdat, 'YYYY-MM')
-        ORDER BY month DESC
-        LIMIT 6
-      `,
-        [startDate],
-      );
+    const statusCounts = {
+      confirmed: 0,
+      cancelled: 0,
+      completed: 0,
+    };
+    reservationsByStatus.forEach((r: any) => {
+      if (r.status === 'confirmed') statusCounts.confirmed = parseInt(r.count);
+      else if (r.status === 'cancelled') statusCounts.cancelled = parseInt(r.count);
+      else if (r.status === 'finished') statusCounts.completed = parseInt(r.count);
+    });
 
-      // 회의실별 이용률
-      const roomStats = await this.dataSource.query(
-        `
-        SELECT
-          r.room_name as room_name,
-          COUNT(res.reservation_id) as reservation_count,
-          ROUND(COUNT(res.reservation_id) * 100.0 / GREATEST(1, $1), 2) as utilization
-        FROM room r
-        LEFT JOIN reservation res ON r.room_id = res.room_id
-          AND res.reservation_createdat >= $2
-        GROUP BY r.room_id, r.room_name
-        ORDER BY reservation_count DESC
-      `,
-        [days, startDate],
-      );
+    // 월별 예약 추이
+    const monthlyReservations = await this.dataSource.query(
+      `
+      SELECT
+        TO_CHAR(reservation_createdat, 'YYYY-MM') as month,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY TO_CHAR(reservation_createdat, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 6
+    `,
+      [startDate],
+    );
 
-      // 시간대별 예약 현황
-      const hourlyStats = await this.dataSource.query(
-        `
-        SELECT
-          EXTRACT(HOUR FROM reservation_starttime) as hour,
-          COUNT(*) as count
-        FROM reservation
-        WHERE reservation_createdat >= $1
-        GROUP BY EXTRACT(HOUR FROM reservation_starttime)
-        ORDER BY hour
-      `,
-        [startDate],
-      );
+    // 회의실별 이용률
+    const roomStats = await this.dataSource.query(
+      `
+      SELECT
+        r.room_name as room_name,
+        COUNT(res.reservation_id) as reservation_count,
+        ROUND(COUNT(res.reservation_id) * 100.0 / GREATEST(1, $1), 2) as utilization
+      FROM room r
+      LEFT JOIN reservation res ON r.room_id = res.room_id
+        AND res.reservation_createdat >= $2
+      GROUP BY r.room_id, r.room_name
+      ORDER BY reservation_count DESC
+    `,
+      [days, startDate],
+    );
 
-      // 활발한 사용자
-      const topUsers = await this.dataSource.query(
-        `
-        SELECT
-          u.user_intra_id as login,
-          u.user_intra_id as displayName,
-          COUNT(r.reservation_id) as reservation_count
-        FROM users u
-        LEFT JOIN reservation r ON u.user_id = r.user_id
-          AND r.reservation_createdat >= $1
-        GROUP BY u.user_id, u.user_intra_id
-        ORDER BY reservation_count DESC
-        LIMIT 5
-      `,
-        [startDate],
-      );
+    // 시간대별 예약 현황
+    const hourlyStats = await this.dataSource.query(
+      `
+      SELECT
+        EXTRACT(HOUR FROM reservation_starttime) as hour,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY EXTRACT(HOUR FROM reservation_starttime)
+      ORDER BY hour
+    `,
+      [startDate],
+    );
 
-      // 사용자 등록 추이
-      const userRegistrationTrend = await this.dataSource.query(
-        `
-        SELECT
-          TO_CHAR(user_createdat, 'YYYY-MM') as month,
-          COUNT(*) as count
-        FROM users
-        WHERE user_createdat >= $1
-        GROUP BY TO_CHAR(user_createdat, 'YYYY-MM')
-        ORDER BY month DESC
-        LIMIT 6
-      `,
-        [startDate],
-      );
+    // 활발한 사용자
+    const topUsers = await this.dataSource.query(
+      `
+      SELECT
+        u.user_intra_id as login,
+        u.user_intra_id as displayName,
+        COUNT(r.reservation_id) as reservation_count
+      FROM users u
+      LEFT JOIN reservation r ON u.user_id = r.user_id
+        AND r.reservation_createdat >= $1
+      GROUP BY u.user_id, u.user_intra_id
+      ORDER BY reservation_count DESC
+      LIMIT 5
+    `,
+      [startDate],
+    );
 
-      return {
-        overview: {
-          totalUsers: parseInt(totalUsers[0].count),
-          totalRooms: parseInt(totalRooms[0].count),
-          totalReservations: parseInt(totalReservations[0].count),
-          activeReservations: parseInt(activeReservations[0].count),
-          userGrowth: userGrowth,
-          reservationGrowth: reservationGrowth,
-        },
-        reservationStats: {
-          byStatus: {
-            confirmed: 0,
-            cancelled: 0,
-            completed: 0,
-          },
-          byMonth: monthlyReservations.map((m) => ({
-            month: this.formatMonth(m.month),
-            count: parseInt(m.count),
-            growth: 0, // 계산 로직 추가 가능
-          })),
-          byRoom: roomStats.map((r) => ({
-            roomName: r.room_name,
-            count: parseInt(r.reservation_count),
-            utilization: parseFloat(r.utilization),
-          })),
-          byHour: hourlyStats.map((h) => ({
-            hour: parseInt(h.hour),
-            count: parseInt(h.count),
-          })),
-        },
-        userStats: {
-          activeUsers: parseInt(totalUsers[0].count), // 활성 사용자 로직 추가 가능
-          newUsersThisMonth: 0, // 이번 달 신규 사용자 계산 로직 추가
-          topUsers: topUsers.map((u) => ({
-            login: u.login,
-            displayName: u.displayName,
-            reservationCount: parseInt(u.reservation_count),
-          })),
-          registrationTrend: userRegistrationTrend.map((u) => ({
-            month: this.formatMonth(u.month),
-            count: parseInt(u.count),
-          })),
-        },
-        systemStats: {
-          averageSessionDuration: 45, // 실제 세션 분석 로직 추가 가능
-          peakUsageHour: 15, // 피크 시간 계산
-          systemUptime: 99.8, // 시스템 가동률
-          errorRate: 0.2, // 에러율
-        },
-      };
-    } catch (error) {
+    // 사용자 등록 추이
+    const userRegistrationTrend = await this.dataSource.query(
+      `
+      SELECT
+        TO_CHAR(user_createdat, 'YYYY-MM') as month,
+        COUNT(*) as count
+      FROM users
+      WHERE user_createdat >= $1
+      GROUP BY TO_CHAR(user_createdat, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 6
+    `,
+      [startDate],
+    );
 
-      // 기본 mock 데이터 반환
-      return this.getMockStatistics();
-    }
+    // 이번 달 신규 사용자 수
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1);
+    thisMonthStart.setHours(0, 0, 0, 0);
+    const newUsersThisMonth = await this.dataSource.query(
+      `SELECT COUNT(*) FROM users WHERE user_createdat >= $1`,
+      [thisMonthStart],
+    );
+
+    // 시스템 통계 계산
+    const systemStats = await this.calculateSystemStats(startDate);
+
+    return {
+      overview: {
+        totalUsers: parseInt(totalUsers[0].count),
+        totalRooms: parseInt(totalRooms[0].count),
+        totalReservations: parseInt(totalReservations[0].count),
+        activeReservations: parseInt(activeReservations[0].count),
+        userGrowth: userGrowth,
+        reservationGrowth: reservationGrowth,
+      },
+      reservationStats: {
+        byStatus: statusCounts,
+        byMonth: monthlyReservations.map((m) => ({
+          month: this.formatMonth(m.month),
+          count: parseInt(m.count),
+          growth: 0,
+        })),
+        byRoom: roomStats.map((r) => ({
+          roomName: r.room_name,
+          count: parseInt(r.reservation_count),
+          utilization: parseFloat(r.utilization),
+        })),
+        byHour: hourlyStats.map((h) => ({
+          hour: parseInt(h.hour),
+          count: parseInt(h.count),
+        })),
+      },
+      userStats: {
+        activeUsers: parseInt(totalUsers[0].count),
+        newUsersThisMonth: parseInt(newUsersThisMonth[0].count),
+        topUsers: topUsers.map((u) => ({
+          login: u.login,
+          displayName: u.displayName,
+          reservationCount: parseInt(u.reservation_count),
+        })),
+        registrationTrend: userRegistrationTrend.map((u) => ({
+          month: this.formatMonth(u.month),
+          count: parseInt(u.count),
+        })),
+      },
+      systemStats,
+    };
   }
 
   async exportStatistics(): Promise<Buffer> {
@@ -909,79 +932,149 @@ SELECT 'Backup completed successfully' as status;
     return `${parseInt(month)}월`;
   }
 
-  private getMockStatistics(): any {
+  // ========== 세션 추적 시스템 ==========
+
+  /**
+   * 사용자 로그인 시 세션 생성
+   */
+  async createSession(
+    userId: number,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<UserSession> {
+    // 기존 활성 세션 종료
+    await this.endActiveSessions(userId);
+
+    const session = this.userSessionRepository.create({
+      userId,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+      isActive: true,
+    });
+
+    return await this.userSessionRepository.save(session);
+  }
+
+  /**
+   * 사용자 로그아웃 시 세션 종료
+   */
+  async endSession(userId: number): Promise<void> {
+    const activeSessions = await this.userSessionRepository.find({
+      where: { userId, isActive: true },
+    });
+
+    const now = new Date();
+    for (const session of activeSessions) {
+      session.logoutAt = now;
+      session.isActive = false;
+      session.durationMinutes = Math.round(
+        (now.getTime() - session.loginAt.getTime()) / (1000 * 60),
+      );
+      await this.userSessionRepository.save(session);
+    }
+  }
+
+  /**
+   * 사용자의 모든 활성 세션 종료
+   */
+  private async endActiveSessions(userId: number): Promise<void> {
+    await this.endSession(userId);
+  }
+
+  /**
+   * 시스템 통계 계산 (세션 기반)
+   */
+  private async calculateSystemStats(startDate: Date): Promise<{
+    averageSessionDuration: number;
+    peakUsageHour: number;
+    systemUptime: number;
+    errorRate: number;
+  }> {
+    // 평균 세션 시간 계산
+    const avgDurationResult = await this.dataSource.query(
+      `
+      SELECT COALESCE(AVG(duration_minutes), 0) as avg_duration
+      FROM user_sessions
+      WHERE login_at >= $1 AND duration_minutes IS NOT NULL
+    `,
+      [startDate],
+    );
+    const averageSessionDuration = Math.round(
+      parseFloat(avgDurationResult[0]?.avg_duration || '0'),
+    );
+
+    // 피크 사용 시간대 계산 (로그인 기준)
+    const peakHourResult = await this.dataSource.query(
+      `
+      SELECT EXTRACT(HOUR FROM login_at) as hour, COUNT(*) as count
+      FROM user_sessions
+      WHERE login_at >= $1
+      GROUP BY EXTRACT(HOUR FROM login_at)
+      ORDER BY count DESC
+      LIMIT 1
+    `,
+      [startDate],
+    );
+    const peakUsageHour = peakHourResult[0]
+      ? parseInt(peakHourResult[0].hour)
+      : 14;
+
+    // 시스템 가동률 계산 (서버 시작 시간 기준)
+    const uptimeMs = Date.now() - this.serverStartTime.getTime();
+    const totalPeriodMs = Date.now() - startDate.getTime();
+    const systemUptime = Math.min(
+      100,
+      Math.round((uptimeMs / totalPeriodMs) * 100 * 100) / 100,
+    );
+
+    // 에러율 계산 (activity_logs에서 error 레벨 비율)
+    const errorRateResult = await this.dataSource.query(
+      `
+      SELECT
+        COUNT(*) FILTER (WHERE level = 'error') as error_count,
+        COUNT(*) as total_count
+      FROM activity_logs
+      WHERE "createdAt" >= $1
+    `,
+      [startDate],
+    );
+    const errorCount = parseInt(errorRateResult[0]?.error_count || '0');
+    const totalLogs = parseInt(errorRateResult[0]?.total_count || '1');
+    const errorRate =
+      totalLogs > 0
+        ? Math.round((errorCount / totalLogs) * 100 * 100) / 100
+        : 0;
+
     return {
-      overview: {
-        totalUsers: 156,
-        totalRooms: 12,
-        totalReservations: 342,
-        activeReservations: 24,
-        userGrowth: 12.5,
-        reservationGrowth: 8.3,
-      },
-      reservationStats: {
-        byStatus: {
-          confirmed: 24,
-          cancelled: 8,
-          completed: 310,
-        },
-        byMonth: [
-          { month: '6월', count: 55, growth: 9.1 },
-          { month: '5월', count: 48, growth: 7.3 },
-          { month: '4월', count: 41, growth: -8.2 },
-          { month: '3월', count: 52, growth: 12.8 },
-          { month: '2월', count: 38, growth: -2.1 },
-          { month: '1월', count: 45, growth: 5.2 },
-        ],
-        byRoom: [
-          { roomName: '대회의실 A', count: 85, utilization: 78.5 },
-          { roomName: '소회의실 B', count: 62, utilization: 65.2 },
-          { roomName: '프로젝트룸 C', count: 48, utilization: 52.3 },
-          { roomName: '스터디룸 D', count: 35, utilization: 41.8 },
-          { roomName: '세미나실', count: 28, utilization: 38.9 },
-        ],
-        byHour: [
-          { hour: 9, count: 15 },
-          { hour: 10, count: 25 },
-          { hour: 11, count: 32 },
-          { hour: 12, count: 8 },
-          { hour: 13, count: 12 },
-          { hour: 14, count: 28 },
-          { hour: 15, count: 35 },
-          { hour: 16, count: 30 },
-          { hour: 17, count: 18 },
-          { hour: 18, count: 10 },
-        ],
-      },
-      userStats: {
-        activeUsers: 134,
-        newUsersThisMonth: 18,
-        topUsers: [
-          { login: 'yutsong', displayName: '유영재', reservationCount: 15 },
-          { login: 'jskim', displayName: '김진수', reservationCount: 12 },
-          { login: 'hpark', displayName: '박현우', reservationCount: 11 },
-          { login: 'slee', displayName: '이승현', reservationCount: 9 },
-          { login: 'mkim', displayName: '김민지', reservationCount: 8 },
-        ],
-        registrationTrend: [
-          { month: '6월', count: 18 },
-          { month: '5월', count: 28 },
-          { month: '4월', count: 21 },
-          { month: '3월', count: 32 },
-          { month: '2월', count: 18 },
-          { month: '1월', count: 25 },
-        ],
-      },
-      systemStats: {
-        averageSessionDuration: 45,
-        peakUsageHour: 15,
-        systemUptime: 99.8,
-        errorRate: 0.2,
-      },
+      averageSessionDuration,
+      peakUsageHour,
+      systemUptime,
+      errorRate,
     };
   }
 
-  // 위험한 시스템 작업들
+  /**
+   * 현재 활성 세션 수 조회
+   */
+  async getActiveSessionCount(): Promise<number> {
+    const result = await this.userSessionRepository.count({
+      where: { isActive: true },
+    });
+    return result;
+  }
+
+  /**
+   * 특정 사용자의 세션 이력 조회
+   */
+  async getUserSessions(userId: number, limit: number = 10): Promise<UserSession[]> {
+    return await this.userSessionRepository.find({
+      where: { userId },
+      order: { loginAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  // ========== 위험한 시스템 작업들 ==========
   async resetDatabase(): Promise<void> {
 
     // 실제 운영환경에서는 이 기능을 비활성화하거나 추가 보안 검증을 해야 합니다

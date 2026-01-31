@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UserModule } from '../user/user.module';
+import { AdminModule } from '../admin/admin.module';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { SlackService } from './services/slack.service';
 import { SlackVerification } from './entities/slack-verification.entity';
@@ -15,6 +16,7 @@ import { SlackVerification } from './entities/slack-verification.entity';
 @Module({
   imports: [
     UserModule,
+    forwardRef(() => AdminModule),
     PassportModule,
     TypeOrmModule.forFeature([SlackVerification]),
     JwtModule.registerAsync({
