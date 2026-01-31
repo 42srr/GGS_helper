@@ -272,8 +272,8 @@ export class ReservationService {
         await this.adminService.sendSlackNotification(
           settings.notifications.slackWebhookUrl,
           {
-            userName: user.name || user.username,
-            username: user.username,
+            userName: user.name,
+            username: user.intraId,
             roomName: room.name,
             startTime: reservation.startTime,
             endTime: reservation.endTime,
