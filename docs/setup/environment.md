@@ -166,6 +166,32 @@ CORS_CREDENTIALS=true
 **프로덕션 환경:**
 - 실제 도메인으로 변경 필요 (예: `https://ggs.example.com`)
 
+### Slack Configuration
+
+회원가입 시 Slack 인증을 위한 Slack Bot 설정입니다.
+
+| 변수명 | 설명 | 기본값 | 필수 |
+|-------|------|-------|------|
+| `SLACK_BOT_TOKEN` | Slack Bot User OAuth Token | - | ✅ |
+
+```env
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token-here
+```
+
+**Slack Bot Token 발급 방법:**
+
+1. [Slack API](https://api.slack.com/apps) 접속
+2. "Create New App" → "From scratch" 선택
+3. OAuth & Permissions에서 다음 Scopes 추가:
+   - `users:read` - 사용자 정보 조회
+   - `users:read.email` - 이메일 조회
+   - `chat:write` - 메시지 전송
+   - `im:write` - DM 전송
+4. "Install to Workspace" 클릭
+5. "Bot User OAuth Token" 복사 (xoxb-로 시작)
+
+자세한 설정 방법은 [Slack 인증 가이드](../features/slack-verification.md)를 참고하세요.
+
 ### Backup Configuration
 
 데이터베이스 백업 설정입니다.
@@ -307,6 +333,7 @@ LOG_LEVEL=info
 
 - `JWT_SECRET` - JWT 토큰 변조 가능
 - `DATABASE_PASSWORD` - 데이터베이스 접근 가능
+- `SLACK_BOT_TOKEN` - Slack 워크스페이스 접근 및 DM 전송 가능
 - `REDIS_PASSWORD` - Redis 접근 가능
 - `SMTP_PASSWORD` - 이메일 계정 탈취 가능
 
