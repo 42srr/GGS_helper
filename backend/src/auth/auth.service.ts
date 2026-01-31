@@ -54,7 +54,7 @@ export class AuthService {
 
   // 새로운 인증 시스템 메서드
   async register(registerDto: RegisterDto): Promise<{ message: string }> {
-    const { intraId, password, name, verificationCode } = registerDto;
+    const { intraId, password, verificationCode } = registerDto;
 
     // 슬랙 인증 코드 확인
     const isVerified = await this.slackService.isCodeVerified(intraId);
@@ -74,7 +74,6 @@ export class AuthService {
     // 사용자 생성
     await this.userService.create({
       intraId,
-      name,
       password: hashedPassword,
     });
 
@@ -123,7 +122,6 @@ export class AuthService {
       user: {
         userId: user.userId,
         intraId: user.intraId,
-        name: user.name,
         role: user.role,
       },
     };

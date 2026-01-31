@@ -7,14 +7,6 @@ export class CreateUserDto {
 
   @IsNotEmpty()
   @IsString()
-  name: string;
-
-  @IsNotEmpty()
-  @IsString()
   @MinLength(8)
   password: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
 }

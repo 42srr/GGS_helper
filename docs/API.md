@@ -106,7 +106,6 @@ POST /auth/register
 **Request Body**:
 ```json
 {
-  "name": "John Smith",
   "intraId": "jsmith",
   "password": "SecurePass123",
   "verificationCode": "123456"
@@ -114,7 +113,6 @@ POST /auth/register
 ```
 
 **Validation**:
-- name: 2-50자
 - intraId: 2-50자, 영문/숫자/하이픈/언더스코어만 허용
 - password: 8자 이상, 대소문자/숫자 포함 필수
 - verificationCode: 6자리 숫자
@@ -122,13 +120,7 @@ POST /auth/register
 **Response**:
 ```json
 {
-  "access_token": "jwt_token_here",
-  "user": {
-    "userId": 1,
-    "intraId": "jsmith",
-    "name": "John Smith",
-    "role": "student"
-  }
+  "message": "회원가입이 완료되었습니다. 로그인해주세요."
 }
 ```
 
@@ -161,7 +153,6 @@ POST /auth/login
   "user": {
     "userId": 1,
     "intraId": "jsmith",
-    "name": "John Smith",
     "role": "student"
   }
 }
@@ -201,7 +192,6 @@ GET /auth/me
 {
   "userId": 1,
   "intraId": "jsmith",
-  "name": "John Smith",
   "role": "student"
 }
 ```
@@ -228,8 +218,6 @@ GET /users?role=admin
   {
     "userId": 1,
     "intraId": "jsmith",
-    "name": "John Smith",
-    "phone": "010-1234-5678",
     "role": "student",
     "isAvailable": true,
     "noShowCount": 0,
@@ -257,8 +245,6 @@ PATCH /users/:id
 **Request Body**:
 ```json
 {
-  "name": "새 이름",
-  "phone": "010-9876-5432",
   "isAvailable": true
 }
 ```

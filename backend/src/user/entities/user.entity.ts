@@ -16,14 +16,8 @@ export class User {
   @Column({ name: 'user_intra_id', unique: true, length: 50 })
   intraId: string;
 
-  @Column({ name: 'user_name', length: 100 })
-  name: string;
-
   @Column({ name: 'user_password', length: 255, select: false })
   password: string;
-
-  @Column({ name: 'user_phone', length: 20, nullable: true })
-  phone?: string;
 
   @Column({ name: 'user_isavailable', default: true })
   isAvailable: boolean;

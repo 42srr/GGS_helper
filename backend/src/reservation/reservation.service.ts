@@ -89,7 +89,7 @@ export class ReservationService {
           overdueReservations
             .map(
               (r) =>
-                `- ${r.user.name} (${r.room.name}) - 종료: ${r.endTime.toLocaleString('ko-KR')}`
+                `- ${r.user.intraId} (${r.room.name}) - 종료: ${r.endTime.toLocaleString('ko-KR')}`
             )
             .join('\n');
 
@@ -272,7 +272,7 @@ export class ReservationService {
         await this.adminService.sendSlackNotification(
           settings.notifications.slackWebhookUrl,
           {
-            userName: user.name,
+            userName: user.intraId,
             username: user.intraId,
             roomName: room.name,
             startTime: reservation.startTime,
@@ -733,7 +733,7 @@ export class ReservationService {
       설명: reservation.description || '',
       회의실: reservation.room?.name || '',
       '회의실 위치': reservation.room?.location || '',
-      예약자: reservation.user?.name || '',
+      예약자: reservation.user?.intraId || '',
       '시작 시간': reservation.startTime,
       '종료 시간': reservation.endTime,
       '참석 인원': reservation.attendees || 0,

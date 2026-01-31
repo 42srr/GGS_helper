@@ -3,17 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
-    description: '사용자 이름',
-    example: 'John Smith',
-    minLength: 2,
-    maxLength: 50,
-  })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  name: string;
-
-  @ApiProperty({
     description: '인트라 ID (영문, 숫자, -, _ 만 허용)',
     example: 'jsmith',
     minLength: 2,

@@ -32,7 +32,7 @@ export class UserService {
   async findByIntraId(intraId: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { intraId },
-      select: ['userId', 'intraId', 'name', 'password', 'role'],
+      select: ['userId', 'intraId', 'password', 'role'],
     });
   }
 
@@ -67,8 +67,6 @@ export class UserService {
       .select([
         'user.userId',
         'user.intraId',
-        'user.name',
-        'user.phone',
         'user.role',
         'user.isAvailable',
         'user.lastLoginAt',
@@ -109,8 +107,6 @@ export class UserService {
     const data = users.map((user) => ({
       ID: user.userId,
       '인트라 ID': user.intraId,
-      이름: user.name || '',
-      등급: user.grade || '',
       역할: user.role || '',
       '예약 수': user._count?.reservations || 0,
       '활성 상태': user.isAvailable ? '활성' : '비활성',
