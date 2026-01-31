@@ -1,21 +1,18 @@
-import { IsEmail, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
 
 export class RegisterDto {
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  @MinLength(3)
-  @MaxLength(50)
-  @Matches(/^[a-zA-Z0-9_-]+$/, {
-    message: 'Username can only contain letters, numbers, hyphens and underscores',
-  })
-  username: string;
-
   @IsString()
   @MinLength(2)
   @MaxLength(50)
   name: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message: 'Intra ID can only contain letters, numbers, hyphens and underscores',
+  })
+  intraId: string;
 
   @IsString()
   @MinLength(8)
@@ -24,4 +21,9 @@ export class RegisterDto {
     message: 'Password must contain uppercase, lowercase and number',
   })
   password: string;
+
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  verificationCode: string;
 }

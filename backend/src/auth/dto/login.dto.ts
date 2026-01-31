@@ -2,9 +2,9 @@ import { IsString, MinLength, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @IsString()
-  @MinLength(3)
+  @MinLength(2)
   @MaxLength(50)
-  username: string;
+  intraId: string;
 
   @IsString()
   password: string;
