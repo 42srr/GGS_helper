@@ -11,8 +11,7 @@ export type Role = typeof Role[keyof typeof Role];
 
 interface User {
   userId: number;
-  email: string;
-  username: string;
+  intraId: string;
   name: string;
   role: Role;
 }
@@ -24,7 +23,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
+  login: (intraId: string, password: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
   hasRole: (role: Role) => boolean;
@@ -158,14 +157,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (intraId: string, password: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ intraId, password }),
       });
 
       if (!response.ok) {

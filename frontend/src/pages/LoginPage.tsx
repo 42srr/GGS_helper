@@ -10,7 +10,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [username, setUsername] = useState('');
+  const [intraId, setIntraId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +33,7 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      await login(intraId, password);
     } catch (err: any) {
       setError(err.response?.data?.message || '로그인에 실패했습니다.');
     } finally {
@@ -63,14 +63,14 @@ export function LoginPage() {
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="username">사용자 ID</Label>
+              <Label htmlFor="intraId">인트라 ID</Label>
               <Input
-                id="username"
+                id="intraId"
                 type="text"
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="사용자 ID를 입력하세요"
+                value={intraId}
+                onChange={(e) => setIntraId(e.target.value)}
+                placeholder="인트라 ID를 입력하세요"
                 disabled={isLoading}
                 className="mt-1"
               />
