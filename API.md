@@ -2,7 +2,9 @@
 
 ## Base URL
 ```
-http://localhost:4000/api
+Backend: http://localhost:3001
+Frontend: http://localhost:3000
+Swagger API 문서: http://localhost:3001/api-docs
 ```
 
 ## Authentication
@@ -31,25 +33,91 @@ Authorization: Bearer <access_token>
 
 ## 1. 인증 (Auth)
 
-### 1.1 회원가입
+### 1.1 Slack 인증 코드 전송
 ```
-POST /auth/register
+POST /auth/send-verification
 ```
+
+**Rate Limit**: 60초에 3번
 
 **Request Body**:
 ```json
 {
-  "email": "user@example.com",
-  "username": "username123",
-  "name": "홍길동",
-  "password": "SecurePass123"
+  "intraId": "jsmith"
 }
 ```
 
 **Validation**:
-- username: 3-50자, 영문/숫자/하이픈/언더스코어만 허용
+- intraId: 2-50자, 영문/숫자/하이픈/언더스코어만 허용
+
+**Response**:
+```json
+{
+  "message": "인증 코드가 슬랙 DM으로 전송되었습니다. 5분 이내에 입력해주세요."
+}
+```
+
+**Error Responses**:
+- `400`: Slack에서 사용자를 찾을 수 없음
+- `429`: Rate Limit 초과
+
+---
+
+### 1.2 Slack 인증 코드 확인
+```
+POST /auth/verify-code
+```
+
+**Rate Limit**: 60초에 10번
+
+**Request Body**:
+```json
+{
+  "intraId": "jsmith",
+  "code": "123456"
+}
+```
+
+**Response (성공)**:
+```json
+{
+  "success": true,
+  "message": "인증이 완료되었습니다."
+}
+```
+
+**Response (실패)**:
+```json
+{
+  "success": false,
+  "message": "인증 코드가 올바르지 않거나 만료되었습니다."
+}
+```
+
+---
+
+### 1.3 회원가입
+```
+POST /auth/register
+```
+
+**Rate Limit**: 1시간에 3번
+
+**Request Body**:
+```json
+{
+  "name": "John Smith",
+  "intraId": "jsmith",
+  "password": "SecurePass123",
+  "verificationCode": "123456"
+}
+```
+
+**Validation**:
+- name: 2-50자
+- intraId: 2-50자, 영문/숫자/하이픈/언더스코어만 허용
 - password: 8자 이상, 대소문자/숫자 포함 필수
-- email: 유효한 이메일 형식
+- verificationCode: 6자리 숫자
 
 **Response**:
 ```json
@@ -57,25 +125,31 @@ POST /auth/register
   "access_token": "jwt_token_here",
   "user": {
     "userId": 1,
-    "email": "user@example.com",
-    "username": "username123",
-    "name": "홍길동",
+    "intraId": "jsmith",
+    "name": "John Smith",
     "role": "student"
   }
 }
 ```
 
+**Error Responses**:
+- `400`: 인증 미완료 또는 유효성 검증 실패
+- `409`: 이미 사용 중인 인트라 ID
+- `429`: Rate Limit 초과
+
 ---
 
-### 1.2 로그인
+### 1.4 로그인
 ```
 POST /auth/login
 ```
 
+**Rate Limit**: 60초에 5번
+
 **Request Body**:
 ```json
 {
-  "username": "username123",
+  "intraId": "jsmith",
   "password": "SecurePass123"
 }
 ```
@@ -86,39 +160,20 @@ POST /auth/login
   "access_token": "jwt_token_here",
   "user": {
     "userId": 1,
-    "email": "user@example.com",
-    "username": "username123",
-    "name": "홍길동",
+    "intraId": "jsmith",
+    "name": "John Smith",
     "role": "student"
   }
 }
 ```
 
----
-
-### 1.3 토큰 갱신
-```
-POST /auth/refresh
-```
-
-**Request Body**:
-```json
-{
-  "userId": 1,
-  "refreshToken": "refresh_token_here"
-}
-```
-
-**Response**:
-```json
-{
-  "access_token": "new_access_token"
-}
-```
+**Error Responses**:
+- `401`: 인트라 ID 또는 비밀번호가 올바르지 않음
+- `429`: Rate Limit 초과
 
 ---
 
-### 1.4 로그아웃
+### 1.5 로그아웃
 ```
 POST /auth/logout
 ```
@@ -134,7 +189,7 @@ POST /auth/logout
 
 ---
 
-### 1.5 내 프로필 조회
+### 1.6 내 프로필 조회
 ```
 GET /auth/me
 ```
@@ -145,9 +200,8 @@ GET /auth/me
 ```json
 {
   "userId": 1,
-  "email": "user@example.com",
-  "username": "username123",
-  "name": "홍길동",
+  "intraId": "jsmith",
+  "name": "John Smith",
   "role": "student"
 }
 ```
@@ -173,9 +227,8 @@ GET /users?role=admin
 [
   {
     "userId": 1,
-    "email": "user@example.com",
-    "username": "username123",
-    "name": "홍길동",
+    "intraId": "jsmith",
+    "name": "John Smith",
     "phone": "010-1234-5678",
     "role": "student",
     "isAvailable": true,
@@ -1025,7 +1078,15 @@ GET /admin/activities/recent?limit=10
 
 ## Rate Limiting
 
-현재 API에는 rate limiting이 설정되어 있지 않습니다. 운영 환경에서는 추가 설정이 필요합니다.
+@nestjs/throttler를 사용한 Rate Limiting이 적용되어 있습니다.
+
+### Auth 엔드포인트
+- `POST /auth/send-verification`: 60초에 3번
+- `POST /auth/verify-code`: 60초에 10번
+- `POST /auth/register`: 1시간에 3번
+- `POST /auth/login`: 60초에 5번
+
+Rate Limit 초과 시 HTTP 429 응답을 반환합니다.
 
 ---
 
@@ -1041,7 +1102,16 @@ GET /admin/activities/recent?limit=10
 
 ---
 
-## Version
+## 추가 문서
 
-API Version: 1.0.0
-Last Updated: 2025-12-01
+- **Swagger API 문서**: http://localhost:3001/api-docs
+- **데이터베이스 스키마**: [TABLES.md](./TABLES.md)
+- **개발 환경 셋팅**: [START_DEV.md](./START_DEV.md)
+- **구현된 기능**: [FEAT.md](./FEAT.md)
+- **Slack 인증 시스템**: [docs/features/slack-verification.md](./docs/features/slack-verification.md)
+
+---
+
+**API Version**: 1.0.0
+**최종 수정일**: 2025-01-31
+**작성자**: GGS (42경산 개발 동아리)
