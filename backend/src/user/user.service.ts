@@ -29,17 +29,10 @@ export class UserService {
     });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByIntraId(intraId: string): Promise<User | null> {
     return await this.userRepository.findOne({
-      where: { email },
-      select: ['userId', 'email', 'username', 'name', 'password', 'role'],
-    });
-  }
-
-  async findByUsername(username: string): Promise<User | null> {
-    return await this.userRepository.findOne({
-      where: { username },
-      select: ['userId', 'email', 'username', 'name', 'password', 'role'],
+      where: { intraId },
+      select: ['userId', 'intraId', 'name', 'password', 'role'],
     });
   }
 
@@ -73,8 +66,7 @@ export class UserService {
       .leftJoin('user.reservations', 'reservation')
       .select([
         'user.userId',
-        'user.username',
-        'user.email',
+        'user.intraId',
         'user.name',
         'user.phone',
         'user.role',

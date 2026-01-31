@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
@@ -6,6 +6,7 @@ import { User } from '../user/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { SlackService } from './services/slack.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class AuthService {
     private configService: ConfigService,
     private userService: UserService,
     private tokenBlacklistService: TokenBlacklistService,
+    private slackService: SlackService,
   ) {}
 
   async logout(userId: number, token: string): Promise<void> {
@@ -52,18 +54,18 @@ export class AuthService {
 
   // 새로운 인증 시스템 메서드
   async register(registerDto: RegisterDto): Promise<{ message: string }> {
-    const { email, password, username, name } = registerDto;
+    const { intraId, password, name, verificationCode } = registerDto;
 
-    // username 중복 체크
-    const existingUser = await this.userService.findByUsername(username);
-    if (existingUser) {
-      throw new ConflictException('Username already exists');
+    // 슬랙 인증 코드 확인
+    const isVerified = await this.slackService.isCodeVerified(intraId);
+    if (!isVerified) {
+      throw new BadRequestException('인증 코드가 유효하지 않거나 만료되었습니다. 인증 코드를 다시 요청해주세요.');
     }
 
-    // 이메일 중복 체크
-    const existingEmail = await this.userService.findByEmail(email);
-    if (existingEmail) {
-      throw new ConflictException('Email already exists');
+    // intraId 중복 체크
+    const existingUser = await this.userService.findByIntraId(intraId);
+    if (existingUser) {
+      throw new ConflictException('해당 인트라 ID는 이미 사용 중입니다');
     }
 
     // 비밀번호 해싱
@@ -71,37 +73,38 @@ export class AuthService {
 
     // 사용자 생성
     await this.userService.create({
-      email,
-      username,
+      intraId,
       name,
       password: hashedPassword,
     });
 
-    return { message: 'Registration successful. You can now login.' };
+    // 인증 완료 후 슬랙 인증 데이터 삭제
+    await this.slackService.deleteVerification(intraId);
+
+    return { message: '회원가입이 완료되었습니다. 로그인해주세요.' };
   }
 
   async login(loginDto: LoginDto): Promise<{
     access_token: string;
     user: {
       userId: number;
-      email: string;
-      username: string;
+      intraId: string;
       name: string;
       role: string;
     };
   }> {
-    const { username, password } = loginDto;
+    const { intraId, password } = loginDto;
 
-    // username으로 사용자 조회
-    const user = await this.userService.findByUsername(username);
+    // intraId로 사용자 조회
+    const user = await this.userService.findByIntraId(intraId);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('인트라 ID 또는 비밀번호가 올바르지 않습니다');
     }
 
     // 비밀번호 검증
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('인트라 ID 또는 비밀번호가 올바르지 않습니다');
     }
 
     // JWT 생성 (JWT 표준에 맞춰 sub 사용)
@@ -119,8 +122,7 @@ export class AuthService {
       access_token: accessToken,
       user: {
         userId: user.userId,
-        email: user.email,
-        username: user.username,
+        intraId: user.intraId,
         name: user.name,
         role: user.role,
       },
