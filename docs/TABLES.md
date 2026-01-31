@@ -20,9 +20,7 @@
 | --------------------- | --------- | -------- | ----------------- | ----------------------------------- |
 | user_id               | integer   | NO       | AUTO_INCREMENT    | 사용자 고유 ID (Primary Key)        |
 | user_intra_id         | varchar(50) | NO     | -                 | 인트라 ID (Unique)                  |
-| user_name             | varchar(100) | NO    | -                 | 사용자 이름                         |
 | user_password         | varchar(255) | NO    | -                 | 비밀번호 (bcrypt 해시)              |
-| user_phone            | varchar(20) | YES    | -                 | 전화번호                            |
 | user_isavailable      | boolean   | NO       | true              | 사용자 활성화 상태                  |
 | user_role             | enum      | NO       | 'student'         | 사용자 역할 (student, staff, admin) |
 | user_createdat        | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                           |
