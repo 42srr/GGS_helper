@@ -10,7 +10,6 @@ async function createAdminUser() {
   // 관리자 계정 정보
   const adminData = {
     intraId: 'admin',
-    name: 'Administrator',
     password: 'Admin1234', // Change this password after first login
   };
 
@@ -19,14 +18,14 @@ async function createAdminUser() {
     const existingAdmin = await userService.findByIntraId('admin');
 
     if (existingAdmin) {
-      console.log('⚠️  Admin user already exists:', existingAdmin.name);
+      console.log('⚠️  Admin user already exists:', existingAdmin.intraId);
 
       // 기존 관리자의 역할 업데이트
       const updatedAdmin = await userService.updateUserRole(
         existingAdmin.userId,
         Role.ADMIN,
       );
-      console.log('✅ Admin role updated for existing user:', updatedAdmin.name);
+      console.log('✅ Admin role updated for existing user:', updatedAdmin.intraId);
 
       // 비밀번호를 업데이트하기 위해 Repository를 직접 사용
       const bcrypt = require('bcrypt');
@@ -62,10 +61,9 @@ async function createAdminUser() {
 
     console.log('✅ Admin user created successfully:');
     console.log(`   ID: ${updatedAdminUser.userId}`);
-    console.log(`   Name: ${updatedAdminUser.name}`);
     console.log(`   Intra ID: ${updatedAdminUser.intraId}`);
     console.log(`   Role: ${updatedAdminUser.role}`);
-    console.log(`   ⚠️  Default password: Admin123! (Please change after first login)`);
+    console.log(`   ⚠️  Default password: Admin1234 (Please change after first login)`);
   } catch (error) {
     console.error('❌ Error creating admin user:', error.message);
   }
@@ -81,12 +79,10 @@ async function createMultipleAdmins() {
   const adminAccounts = [
     {
       intraId: 'admin',
-      name: 'Administrator',
       password: 'Admin123!',
     },
     {
       intraId: 'superadmin',
-      name: 'Super Administrator',
       password: 'SuperAdmin123!',
     },
   ];
@@ -98,9 +94,9 @@ async function createMultipleAdmins() {
       const existingAdmin = await userService.findByIntraId(adminData.intraId);
 
       if (existingAdmin) {
-        console.log(`⚠️  ${adminData.name} already exists, updating role...`);
+        console.log(`⚠️  ${adminData.intraId} already exists, updating role...`);
         await userService.updateUserRole(existingAdmin.userId, Role.ADMIN);
-        console.log(`✅ ${adminData.name} role updated\n`);
+        console.log(`✅ ${adminData.intraId} role updated\n`);
         continue;
       }
 
@@ -119,12 +115,12 @@ async function createMultipleAdmins() {
         Role.ADMIN,
       );
 
-      console.log(`✅ ${updatedAdminUser.name} created successfully`);
+      console.log(`✅ ${updatedAdminUser.intraId} created successfully`);
       console.log(`   ID: ${updatedAdminUser.userId}`);
       console.log(`   Intra ID: ${updatedAdminUser.intraId}`);
       console.log(`   Role: ${updatedAdminUser.role}\n`);
     } catch (error) {
-      console.error(`❌ Error creating ${adminData.name}:`, error.message);
+      console.error(`❌ Error creating ${adminData.intraId}:`, error.message);
     }
   }
 
@@ -161,7 +157,6 @@ async function promoteUserToAdmin() {
 
     console.log('✅ User promoted to admin successfully:');
     console.log(`   ID: ${updatedUser.userId}`);
-    console.log(`   Name: ${updatedUser.name}`);
     console.log(`   Intra ID: ${updatedUser.intraId}`);
     console.log(`   Previous Role: ${user.role}`);
     console.log(`   New Role: ${updatedUser.role}`);
@@ -183,7 +178,7 @@ async function listUsers() {
     console.log('─'.repeat(80));
 
     users.forEach((user, index) => {
-      console.log(`${index + 1}. ${user.name} (@${user.intraId})`);
+      console.log(`${index + 1}. @${user.intraId}`);
       console.log(`   Intra ID: ${user.intraId}`);
       console.log(`   Role: ${user.role}`);
       console.log(`   Active: ${user.isAvailable}`);

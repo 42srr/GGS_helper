@@ -88,7 +88,6 @@ export class AuthService {
     user: {
       userId: number;
       intraId: string;
-      name: string;
       role: string;
     };
   }> {
