@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { UserService } from '../../user/user.service';
 import { TokenBlacklistService } from '../token-blacklist.service';
+import { JwtPayload } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -21,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(request: Request, payload: any) {
+  async validate(request: Request, payload: JwtPayload) {
     // Authorization 헤더에서 토큰 추출
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
 

@@ -5,10 +5,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Reservation } from '../../reservation/entities/reservation.entity';
 
 @Entity('users')
+@Index(['lastLoginAt'])
+@Index(['createdAt'])
+@Index(['role'])
 export class User {
   @PrimaryGeneratedColumn({ name: 'user_id' })
   userId: number;

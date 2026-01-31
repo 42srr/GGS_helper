@@ -13,6 +13,8 @@ import {
   UploadedFile,
   HttpException,
   HttpStatus,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -25,6 +27,8 @@ import { AdminService } from './admin.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @RequirePermissions('admin:*')
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(
     private readonly adminService: AdminService,
   ) {}
@@ -96,14 +100,12 @@ export class AdminController {
 
   @Get('system/stats')
   async getSystemStats() {
-
     try {
       const stats = await this.adminService.getSystemStats();
-
       return stats;
     } catch (error) {
-
-      throw error;
+      this.logger.error(`Failed to get system stats: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('시스템 통계 조회 중 오류가 발생했습니다.');
     }
   }
 
@@ -168,11 +170,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'Database reset failed',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`Database reset failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('데이터베이스 초기화 중 오류가 발생했습니다.');
     }
   }
 
@@ -185,11 +184,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'Failed to clear logs',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`Failed to clear logs: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('로그 정리 중 오류가 발생했습니다.');
     }
   }
 
@@ -203,11 +199,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'API key tests failed',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`API key tests failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('API 키 테스트 중 오류가 발생했습니다.');
     }
   }
 

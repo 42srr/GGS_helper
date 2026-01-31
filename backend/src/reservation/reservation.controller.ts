@@ -26,6 +26,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { multerConfig } from '../common/multer.config';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('reservations')
 @UseGuards(JwtAuthGuard)
@@ -38,7 +39,7 @@ export class ReservationController {
    */
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })  // 60초에 20번
-  create(@Body() createReservationDto: CreateReservationDto, @Req() req: any) {
+  create(@Body() createReservationDto: CreateReservationDto, @Req() req: AuthenticatedRequest) {
     return this.reservationService.create(createReservationDto, req.user.userId);
   }
 
@@ -81,7 +82,7 @@ export class ReservationController {
   }
 
   @Get('my')
-  findMyReservations(@Req() req: any) {
+  findMyReservations(@Req() req: AuthenticatedRequest) {
     return this.reservationService.findByUser(req.user.userId);
   }
 
@@ -113,7 +114,7 @@ export class ReservationController {
   update(
     @Param('id') id: string,
     @Body() updateReservationDto: UpdateReservationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.reservationService.update(
       +id,
@@ -123,7 +124,7 @@ export class ReservationController {
   }
 
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string, @Req() req: any) {
+  cancel(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.cancel(+id, req.user.userId);
   }
 
@@ -139,12 +140,12 @@ export class ReservationController {
   }
 
   @Post(':id/early-return')
-  earlyReturn(@Param('id') id: string, @Req() req: any) {
+  earlyReturn(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.earlyReturn(+id, req.user.userId);
   }
 
   @Post(':id/check-in')
-  checkIn(@Param('id') id: string, @Req() req: any) {
+  checkIn(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.checkIn(+id, req.user.userId);
   }
 
@@ -191,7 +192,7 @@ export class ReservationController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
     @Body('notes') notes: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return await this.reservationService.uploadCheckoutPhoto(
       id,
@@ -215,7 +216,7 @@ export class ReservationController {
   @Delete(':id/checkout-photo')
   async deleteCheckoutPhoto(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     await this.reservationService.deleteCheckoutPhoto(id, req.user.userId);
     return {

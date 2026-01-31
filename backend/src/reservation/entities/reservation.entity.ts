@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Room } from '../../room/entities/room.entity';
 import { User } from '../../user/entities/user.entity';
@@ -19,6 +20,10 @@ export type ReservationStatus =
   | 'cancelled';
 
 @Entity('reservation')
+@Index(['roomId', 'userId'])
+@Index(['startTime', 'endTime'])
+@Index(['status'])
+@Index(['createdAt'])
 export class Reservation {
   @PrimaryGeneratedColumn({ name: 'reservation_id' })
   reservationId: number;

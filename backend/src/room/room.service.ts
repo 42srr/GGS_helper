@@ -3,6 +3,7 @@ import {
   NotFoundException,
   Inject,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,6 +17,8 @@ import * as XLSX from 'xlsx';
 
 @Injectable()
 export class RoomService {
+  private readonly logger = new Logger(RoomService.name);
+
   constructor(
     @InjectRepository(Room)
     private roomRepository: Repository<Room>,
@@ -44,7 +47,7 @@ export class RoomService {
         'success',
       );
     } catch (error) {
-
+      this.logger.warn(`Failed to log activity for room creation: ${error.message}`);
     }
 
     return savedRoom;
@@ -91,7 +94,7 @@ export class RoomService {
         'info',
       );
     } catch (error) {
-
+      this.logger.warn(`Failed to log activity for room update: ${error.message}`);
     }
 
     return updatedRoom;
@@ -169,7 +172,7 @@ export class RoomService {
         successCount++;
 
       } catch (error) {
-
+        this.logger.warn(`Failed to process Excel row ${i + 2}: ${error.message}`);
         errors.push(`Row ${i + 2}: ${error.message}`);
       }
     }
@@ -190,7 +193,7 @@ export class RoomService {
           'info',
         );
       } catch (error) {
-
+        this.logger.warn(`Failed to log activity for Excel upload: ${error.message}`);
       }
     }
 

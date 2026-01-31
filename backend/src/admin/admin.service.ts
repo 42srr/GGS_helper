@@ -4,13 +4,10 @@ import { DataSource, Repository, IsNull } from 'typeorm';
 import { SystemSettings } from './entities/system-settings.entity';
 import { ActivityLog, ActivityType } from './entities/activity-log.entity';
 import { UserSession } from './entities/user-session.entity';
+import { DEFAULT_SETTINGS, SystemSettings as SystemSettingsType } from '../common/constants/default-settings.constant';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as XLSX from 'xlsx';
-
-const execAsync = promisify(exec);
 
 @Injectable()
 export class AdminService {
@@ -200,7 +197,20 @@ SELECT 'Backup completed successfully' as status;
 
   async restoreBackup(backupId: string): Promise<void> {
     const backupDir = path.join(process.cwd(), 'backups');
+
+    // 백업 ID 유효성 검증 (알파벳, 숫자, 언더스코어만 허용)
+    if (!/^[\w-]+$/.test(backupId)) {
+      throw new Error('Invalid backup ID format');
+    }
+
     const backupPath = path.join(backupDir, `${backupId}.sql`);
+
+    // Path traversal 방지: 백업 파일이 backupDir 내에 있는지 확인
+    const resolvedBackupPath = path.resolve(backupPath);
+    const resolvedBackupDir = path.resolve(backupDir);
+    if (!resolvedBackupPath.startsWith(resolvedBackupDir)) {
+      throw new Error('Invalid backup path');
+    }
 
     if (!fs.existsSync(backupPath)) {
       throw new Error('Backup file not found');
@@ -210,18 +220,47 @@ SELECT 'Backup completed successfully' as status;
       // PostgreSQL 연결 정보 가져오기
       const dbConfig = this.dataSource.options;
 
-      // psql을 사용한 복원 (실제 운영환경에서는 주의 필요)
+      // psql을 사용한 복원 (spawn 사용으로 command injection 방지)
       const env = {
         ...process.env,
         PGPASSWORD: dbConfig['password']?.toString() || '',
       };
 
-      const command = `psql -h ${dbConfig['host'] || 'localhost'} -p ${dbConfig['port'] || 5432} -U ${dbConfig['username']} -d ${dbConfig['database']} -f ${backupPath}`;
+      const { spawn } = require('child_process');
 
-      await execAsync(command, { env });
+      await new Promise<void>((resolve, reject) => {
+        const psql = spawn('psql', [
+          '-h', String(dbConfig['host'] || 'localhost'),
+          '-p', String(dbConfig['port'] || 5432),
+          '-U', String(dbConfig['username']),
+          '-d', String(dbConfig['database']),
+          '-f', resolvedBackupPath,
+        ], { env });
+
+        psql.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`psql exited with code ${code}`));
+          }
+        });
+
+        psql.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      // 활동 로그 기록
+      await this.logActivity(
+        ActivityType.BACKUP_CREATED,
+        '백업 복원 완료',
+        `백업 파일이 복원되었습니다: ${backupId}`,
+        undefined,
+        { backupId },
+        'success',
+      );
 
     } catch (error) {
-
       throw new Error('Backup restoration failed');
     }
   }
@@ -310,41 +349,11 @@ SELECT 'Backup completed successfully' as status;
   }
 
   // 설정 관리 메서드들
-  async getSettings(): Promise<any> {
+  async getSettings(): Promise<SystemSettingsType> {
     try {
-      // 기본 설정값
-      const defaultSettings = {
-        reservation: {
-          maxDaysAdvance: 30,
-          maxDuration: 8,
-          allowWeekends: false,
-          requireApproval: true,
-        },
-        notifications: {
-          emailEnabled: true,
-          reminderHours: 24,
-          adminNotifications: true,
-          systemAlerts: true,
-          slackWebhookUrl: '',
-          slackEnabled: false,
-        },
-        security: {
-          sessionTimeout: 60,
-          maxLoginAttempts: 5,
-          requireStrongPassword: true,
-          twoFactorAuth: false,
-        },
-        system: {
-          maintenanceMode: false,
-          debugMode: false,
-          backupRetentionDays: 30,
-          logLevel: 'info',
-        },
-      };
-
       // 저장된 설정 조회
       const settingsRecords = await this.settingsRepository.find();
-      const settings = { ...defaultSettings };
+      const settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 
       // 저장된 설정으로 덮어쓰기
       settingsRecords.forEach((record) => {
@@ -359,36 +368,8 @@ SELECT 'Backup completed successfully' as status;
 
       return settings;
     } catch (error) {
-
       // 에러 시 기본 설정 반환
-      return {
-        reservation: {
-          maxDaysAdvance: 30,
-          maxDuration: 8,
-          allowWeekends: false,
-          requireApproval: true,
-        },
-        notifications: {
-          emailEnabled: true,
-          reminderHours: 24,
-          adminNotifications: true,
-          systemAlerts: true,
-          slackWebhookUrl: '',
-          slackEnabled: false,
-        },
-        security: {
-          sessionTimeout: 60,
-          maxLoginAttempts: 5,
-          requireStrongPassword: true,
-          twoFactorAuth: false,
-        },
-        system: {
-          maintenanceMode: false,
-          debugMode: false,
-          backupRetentionDays: 30,
-          logLevel: 'info',
-        },
-      };
+      return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     }
   }
 
@@ -624,19 +605,16 @@ SELECT 'Backup completed successfully' as status;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // 전체 통계
-    const totalUsers = await this.dataSource.query(
-      'SELECT COUNT(*) FROM users',
-    );
-    const totalRooms = await this.dataSource.query(
-      'SELECT COUNT(*) FROM room',
-    );
-    const totalReservations = await this.dataSource.query(
-      'SELECT COUNT(*) FROM reservation',
-    );
-    const activeReservations = await this.dataSource.query(
-      `SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()`,
-    );
+    // 전체 통계 - 단일 쿼리로 통합
+    const overviewStats = await this.dataSource.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM room) as total_rooms,
+        (SELECT COUNT(*) FROM reservation) as total_reservations,
+        (SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()) as active_reservations
+    `);
+
+    const { total_users, total_rooms, total_reservations, active_reservations } = overviewStats[0];
 
     // 성장률 계산
     const userGrowth = await this.calculateGrowthRate('users', days);
@@ -760,10 +738,10 @@ SELECT 'Backup completed successfully' as status;
 
     return {
       overview: {
-        totalUsers: parseInt(totalUsers[0].count),
-        totalRooms: parseInt(totalRooms[0].count),
-        totalReservations: parseInt(totalReservations[0].count),
-        activeReservations: parseInt(activeReservations[0].count),
+        totalUsers: parseInt(total_users),
+        totalRooms: parseInt(total_rooms),
+        totalReservations: parseInt(total_reservations),
+        activeReservations: parseInt(active_reservations),
         userGrowth: userGrowth,
         reservationGrowth: reservationGrowth,
       },
@@ -785,7 +763,7 @@ SELECT 'Backup completed successfully' as status;
         })),
       },
       userStats: {
-        activeUsers: parseInt(totalUsers[0].count),
+        activeUsers: parseInt(total_users),
         newUsersThisMonth: parseInt(newUsersThisMonth[0].count),
         topUsers: topUsers.map((u) => ({
           login: u.login,

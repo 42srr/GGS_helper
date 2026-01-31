@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Inject,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan, LessThan, IsNull } from 'typeorm';
@@ -20,6 +21,8 @@ import * as path from 'path';
 
 @Injectable()
 export class ReservationService {
+  private readonly logger = new Logger(ReservationService.name);
+
   constructor(
     @InjectRepository(Reservation)
     private reservationRepository: Repository<Reservation>,
@@ -205,21 +208,7 @@ export class ReservationService {
     // 시간 유효성 검사
     const start = new Date(startTime);
     const end = new Date(endTime);
-
-    if (start >= end) {
-      throw new BadRequestException('시작 시간은 종료 시간보다 빨라야 합니다');
-    }
-
-    if (start < new Date()) {
-      throw new BadRequestException('과거 시간으로는 예약할 수 없습니다');
-    }
-
-    // 예약 시간 제한 (최대 2시간)
-    const durationInMs = end.getTime() - start.getTime();
-    const durationInHours = durationInMs / (1000 * 60 * 60);
-    if (durationInHours > 2) {
-      throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
-    }
+    this.validateReservationTime(start, end, true);
 
     // 중복 예약 확인 (DB 레벨에서 최적화된 쿼리)
     const hasConflict = await this.checkTimeConflict(roomId, start, end);
@@ -251,7 +240,7 @@ export class ReservationService {
 
     // Slack 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
     this.sendSlackNotificationIfEnabled(savedReservation, user, room).catch((err) => {
-
+      this.logger.warn(`Slack notification failed for reservation ${savedReservation.reservationId}: ${err.message}`);
     });
 
     return savedReservation;
@@ -282,7 +271,7 @@ export class ReservationService {
         );
       }
     } catch (error) {
-
+      this.logger.warn(`Failed to send Slack notification: ${error.message}`);
       // 알림 실패는 예약 생성을 막지 않음
     }
   }
@@ -319,6 +308,33 @@ export class ReservationService {
 
     const count = await query.getCount();
     return count > 0;
+  }
+
+  /**
+   * 예약 시간 유효성 검증
+   * @param startTime 시작 시간
+   * @param endTime 종료 시간
+   * @param checkPastTime 과거 시간 검사 여부 (신규 예약시 true)
+   */
+  private validateReservationTime(
+    startTime: Date,
+    endTime: Date,
+    checkPastTime: boolean = true,
+  ): void {
+    if (startTime >= endTime) {
+      throw new BadRequestException('시작 시간은 종료 시간보다 빨라야 합니다');
+    }
+
+    if (checkPastTime && startTime < new Date()) {
+      throw new BadRequestException('과거 시간으로는 예약할 수 없습니다');
+    }
+
+    // 예약 시간 제한 (최대 2시간)
+    const durationInMs = endTime.getTime() - startTime.getTime();
+    const durationInHours = durationInMs / (1000 * 60 * 60);
+    if (durationInHours > 2) {
+      throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
+    }
   }
 
   async findAll(): Promise<Reservation[]> {
@@ -407,18 +423,8 @@ export class ReservationService {
         ? new Date(updateReservationDto.endTime)
         : reservation.endTime;
 
-      if (newStartTime >= newEndTime) {
-        throw new BadRequestException(
-          '시작 시간은 종료 시간보다 빨라야 합니다',
-        );
-      }
-
-      // 예약 시간 제한 (최대 2시간)
-      const durationInMs = newEndTime.getTime() - newStartTime.getTime();
-      const durationInHours = durationInMs / (1000 * 60 * 60);
-      if (durationInHours > 2) {
-        throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
-      }
+      // 시간 유효성 검증 (수정 시에는 과거 시간 체크 불필요)
+      this.validateReservationTime(newStartTime, newEndTime, false);
 
       // 다른 예약과의 충돌 확인 (본인 예약 제외, 최적화된 쿼리 사용)
       const hasConflict = await this.checkTimeConflict(

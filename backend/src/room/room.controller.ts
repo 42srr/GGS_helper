@@ -118,16 +118,19 @@ export class RoomController {
   }
 
   @Get(':id')
+  @RequirePermissions('room:read')
   findOne(@Param('id') id: string) {
     return this.roomService.findOne(+id);
   }
 
   @Patch(':id')
+  @RequirePermissions('room:update')
   update(@Param('id') id: string, @Body() updateRoomDto: UpdateRoomDto) {
     return this.roomService.update(+id, updateRoomDto);
   }
 
   @Delete(':id')
+  @RequirePermissions('room:delete')
   remove(@Param('id') id: string) {
     return this.roomService.remove(+id);
   }

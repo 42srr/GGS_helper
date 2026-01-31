@@ -17,6 +17,7 @@ import { Room } from './room/entities/room.entity';
 import { Reservation } from './reservation/entities/reservation.entity';
 import { SystemSettings } from './admin/entities/system-settings.entity';
 import { ActivityLog } from './admin/entities/activity-log.entity';
+import { UserSession } from './admin/entities/user-session.entity';
 import { SlackVerification } from './auth/entities/slack-verification.entity';
 
 @Module({
@@ -48,6 +49,7 @@ import { SlackVerification } from './auth/entities/slack-verification.entity';
           Reservation,
           SystemSettings,
           ActivityLog,
+          UserSession,
           SlackVerification,
         ],
         synchronize: true, // Development mode - auto-create tables

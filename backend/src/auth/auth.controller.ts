@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -17,6 +18,7 @@ import { SendVerificationDto } from './dto/send-verification.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SlackService } from './services/slack.service';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -33,8 +35,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @ApiResponse({ status: 401, description: '인증 실패' })
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: any) {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+  async logout(@Req() req: AuthenticatedRequest) {
+    const token = req.headers.authorization?.replace('Bearer ', '') || '';
     await this.authService.logout(req.user.userId, token);
     return { message: 'Logged out successfully' };
   }
@@ -45,7 +47,7 @@ export class AuthController {
   @ApiOperation({ summary: '현재 사용자 정보 조회', description: 'JWT 토큰으로 현재 로그인한 사용자 정보를 조회합니다.' })
   @ApiResponse({ status: 200, description: '사용자 정보 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 실패' })
-  async getProfile(@Req() req: any) {
+  async getProfile(@Req() req: AuthenticatedRequest) {
     return req.user;
   }
 
@@ -121,8 +123,9 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Rate Limit 초과 (60초에 5번)' })
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  async login(@Body() loginDto: LoginDto, @Req() req: any) {
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ipAddress = req.ip || (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor) || req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return await this.authService.login(loginDto, ipAddress, userAgent);
   }

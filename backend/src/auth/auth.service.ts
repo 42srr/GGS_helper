@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
@@ -12,6 +12,8 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -48,7 +50,8 @@ export class AuthService {
       // 세션 종료
       await this.adminService.endSession(userId);
     } catch (error) {
-      throw error;
+      this.logger.error(`Logout failed for user ${userId}: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('로그아웃 처리 중 오류가 발생했습니다.');
     }
   }
 

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { SlackVerification } from '../entities/slack-verification.entity';
@@ -6,6 +6,8 @@ import axios from 'axios';
 
 @Injectable()
 export class SlackService {
+  private readonly logger = new Logger(SlackService.name);
+
   constructor(
     @InjectRepository(SlackVerification)
     private slackVerificationRepository: Repository<SlackVerification>,
@@ -44,7 +46,7 @@ export class SlackService {
 
       return user ? user.id : null;
     } catch (error) {
-      console.error('Error finding Slack user:', error);
+      this.logger.error(`Failed to find Slack user for intraId: ${intraId}`, error.stack);
       return null;
     }
   }
@@ -89,7 +91,7 @@ export class SlackService {
         },
       );
     } catch (error) {
-      console.error('Error sending Slack DM:', error);
+      this.logger.error(`Failed to send Slack DM to user: ${slackUserId}`, error.stack);
       throw new BadRequestException('슬랙 메시지 전송에 실패했습니다');
     }
   }

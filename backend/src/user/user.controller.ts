@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   UseGuards,
   Req,
   Patch,
@@ -19,26 +18,13 @@ import {
   OwnerOnly,
 } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
-import * as fs from 'fs';
-import * as path from 'path';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('users')
 export class UserController {
   constructor(
     private readonly userService: UserService,
   ) {}
-
-  private parseJsonField(field: any): any {
-    if (typeof field === 'string') {
-      try {
-        return JSON.parse(field);
-      } catch (error) {
-
-        return null;
-      }
-    }
-    return field;
-  }
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -80,14 +66,14 @@ export class UserController {
   @Get('stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @OwnerOnly()
-  async getUserStats(@Req() req: any) {
+  async getUserStats(@Req() req: AuthenticatedRequest) {
     return await this.userService.getUserStats(req.user.userId);
   }
 
   @Get('reservation-status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @OwnerOnly()
-  async getReservationStatus(@Req() req: any) {
+  async getReservationStatus(@Req() req: AuthenticatedRequest) {
     const user = await this.userService.findOne(req.user.userId);
 
     if (!user) {
