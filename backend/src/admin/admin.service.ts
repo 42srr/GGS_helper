@@ -990,34 +990,42 @@ SELECT 'Backup completed successfully' as status;
     systemUptime: number;
     errorRate: number;
   }> {
-    // 평균 세션 시간 계산
-    const avgDurationResult = await this.dataSource.query(
-      `
-      SELECT COALESCE(AVG(duration_minutes), 0) as avg_duration
-      FROM user_sessions
-      WHERE login_at >= $1 AND duration_minutes IS NOT NULL
-    `,
-      [startDate],
-    );
-    const averageSessionDuration = Math.round(
-      parseFloat(avgDurationResult[0]?.avg_duration || '0'),
-    );
+    let averageSessionDuration = 0;
+    let peakUsageHour = 14;
+    let errorRate = 0;
 
-    // 피크 사용 시간대 계산 (로그인 기준)
-    const peakHourResult = await this.dataSource.query(
-      `
-      SELECT EXTRACT(HOUR FROM login_at) as hour, COUNT(*) as count
-      FROM user_sessions
-      WHERE login_at >= $1
-      GROUP BY EXTRACT(HOUR FROM login_at)
-      ORDER BY count DESC
-      LIMIT 1
-    `,
-      [startDate],
-    );
-    const peakUsageHour = peakHourResult[0]
-      ? parseInt(peakHourResult[0].hour)
-      : 14;
+    // 평균 세션 시간 계산 (테이블이 없을 수 있음)
+    try {
+      const avgDurationResult = await this.dataSource.query(
+        `
+        SELECT COALESCE(AVG(duration_minutes), 0) as avg_duration
+        FROM user_sessions
+        WHERE login_at >= $1 AND duration_minutes IS NOT NULL
+      `,
+        [startDate],
+      );
+      averageSessionDuration = Math.round(
+        parseFloat(avgDurationResult[0]?.avg_duration || '0'),
+      );
+
+      // 피크 사용 시간대 계산 (로그인 기준)
+      const peakHourResult = await this.dataSource.query(
+        `
+        SELECT EXTRACT(HOUR FROM login_at) as hour, COUNT(*) as count
+        FROM user_sessions
+        WHERE login_at >= $1
+        GROUP BY EXTRACT(HOUR FROM login_at)
+        ORDER BY count DESC
+        LIMIT 1
+      `,
+        [startDate],
+      );
+      peakUsageHour = peakHourResult[0]
+        ? parseInt(peakHourResult[0].hour)
+        : 14;
+    } catch {
+      // user_sessions 테이블이 없는 경우 기본값 사용
+    }
 
     // 시스템 가동률 계산 (서버 시작 시간 기준)
     const uptimeMs = Date.now() - this.serverStartTime.getTime();
@@ -1028,22 +1036,26 @@ SELECT 'Backup completed successfully' as status;
     );
 
     // 에러율 계산 (activity_logs에서 error 레벨 비율)
-    const errorRateResult = await this.dataSource.query(
-      `
-      SELECT
-        COUNT(*) FILTER (WHERE level = 'error') as error_count,
-        COUNT(*) as total_count
-      FROM activity_logs
-      WHERE "createdAt" >= $1
-    `,
-      [startDate],
-    );
-    const errorCount = parseInt(errorRateResult[0]?.error_count || '0');
-    const totalLogs = parseInt(errorRateResult[0]?.total_count || '1');
-    const errorRate =
-      totalLogs > 0
-        ? Math.round((errorCount / totalLogs) * 100 * 100) / 100
-        : 0;
+    try {
+      const errorRateResult = await this.dataSource.query(
+        `
+        SELECT
+          COUNT(*) FILTER (WHERE level = 'error') as error_count,
+          COUNT(*) as total_count
+        FROM activity_logs
+        WHERE "createdAt" >= $1
+      `,
+        [startDate],
+      );
+      const errorCount = parseInt(errorRateResult[0]?.error_count || '0');
+      const totalLogs = parseInt(errorRateResult[0]?.total_count || '1');
+      errorRate =
+        totalLogs > 0
+          ? Math.round((errorCount / totalLogs) * 100 * 100) / 100
+          : 0;
+    } catch {
+      // activity_logs 테이블 에러 시 기본값 사용
+    }
 
     return {
       averageSessionDuration,
