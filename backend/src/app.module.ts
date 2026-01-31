@@ -17,6 +17,7 @@ import { Room } from './room/entities/room.entity';
 import { Reservation } from './reservation/entities/reservation.entity';
 import { SystemSettings } from './admin/entities/system-settings.entity';
 import { ActivityLog } from './admin/entities/activity-log.entity';
+import { SlackVerification } from './auth/entities/slack-verification.entity';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { ActivityLog } from './admin/entities/activity-log.entity';
           Reservation,
           SystemSettings,
           ActivityLog,
+          SlackVerification,
         ],
         synchronize: true, // Development mode - auto-create tables
         timezone: 'Asia/Seoul', // 한국 시간대 설정
