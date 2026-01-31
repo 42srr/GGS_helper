@@ -45,8 +45,14 @@ async function createAdminUser() {
       return;
     }
 
-    // 새 관리자 계정 생성
-    const adminUser = await userService.create(adminData);
+    // 새 관리자 계정 생성 (비밀번호 해싱)
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(adminData.password, 10);
+
+    const adminUser = await userService.create({
+      ...adminData,
+      password: hashedPassword,
+    });
 
     // 관리자 역할 부여
     const updatedAdminUser = await userService.updateUserRole(
@@ -98,7 +104,14 @@ async function createMultipleAdmins() {
         continue;
       }
 
-      const adminUser = await userService.create(adminData);
+      // 비밀번호 해싱
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(adminData.password, 10);
+
+      const adminUser = await userService.create({
+        ...adminData,
+        password: hashedPassword,
+      });
 
       // 관리자 역할 부여
       const updatedAdminUser = await userService.updateUserRole(
