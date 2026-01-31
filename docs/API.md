@@ -1108,7 +1108,6 @@ Rate Limit 초과 시 HTTP 429 응답을 반환합니다.
 - **데이터베이스 스키마**: [TABLES.md](./TABLES.md)
 - **개발 환경 셋팅**: [START_DEV.md](./START_DEV.md)
 - **구현된 기능**: [FEAT.md](./FEAT.md)
-- **Slack 인증 시스템**: [docs/features/slack-verification.md](./docs/features/slack-verification.md)
 
 ---
 

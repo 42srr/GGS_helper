@@ -36,7 +36,7 @@ Slack Bot을 이용한 사용자 인증 시스템
 - [backend/src/auth/services/slack.service.ts](backend/src/auth/services/slack.service.ts)
 - [backend/src/auth/entities/slack-verification.entity.ts](backend/src/auth/entities/slack-verification.entity.ts)
 
-**상세 문서**: [docs/features/slack-verification.md](docs/features/slack-verification.md)
+**상세 문서**: Slack 인증 시스템 구현 완료
 
 ---
 
@@ -204,7 +204,7 @@ Excel 파일을 이용한 회의실 정보 일괄 등록
 **관련 파일**:
 - [backend/src/reservation/reservation.service.ts](backend/src/reservation/reservation.service.ts)
 
-**상세 문서**: [docs/features/checkout-photo-verification.md](docs/features/checkout-photo-verification.md)
+**상세 문서**: 체크아웃 사진 업로드 구현 완료
 
 ---
 
@@ -281,7 +281,7 @@ Excel 파일을 이용한 회의실 정보 일괄 등록
 **관련 파일**:
 - [backend/src/admin/admin.service.ts](backend/src/admin/admin.service.ts)
 
-**상세 문서**: [docs/features/auto-backup-implementation.md](docs/features/auto-backup-implementation.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -536,7 +536,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 **예상 기술**: `@nestjs/schedule`, `node-cron`
 
-**상세 문서**: [docs/features/auto-backup-implementation.md](docs/features/auto-backup-implementation.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -546,7 +546,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 **예상 기술**: FullCalendar.js 또는 React Big Calendar
 
-**상세 문서**: [docs/features/calendar-timeline-view.md](docs/features/calendar-timeline-view.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -554,7 +554,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 관리자가 체크아웃 사진을 검토하고 승인/거부
 
-**상세 문서**: [docs/features/admin-checkout-review.md](docs/features/admin-checkout-review.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -562,7 +562,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 영업시간 외 예약 시 자동 알림 발송
 
-**상세 문서**: [docs/features/after-hours-reservation-notice.md](docs/features/after-hours-reservation-notice.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -570,7 +570,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 프론트엔드 UI/UX 전반적 개선
 
-**상세 문서**: [docs/feat/ui-improvement-plan.md](docs/feat/ui-improvement-plan.md)
+**상세 문서**: 향후 구현 예정
 
 ---
 
@@ -588,7 +588,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 - 기존 42 OAuth 인증 제거
 - User 스키마 변경: `username`, `email` → `intraId`
 
-**상세 문서**: [docs/CHANGELOG_SLACK_AUTH.md](docs/CHANGELOG_SLACK_AUTH.md)
+**상세 문서**: Slack 인증 시스템으로 전환 완료
 
 ---
 
@@ -616,7 +616,7 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 - [API 명세](./API.md)
 - [데이터베이스 스키마](./TABLES.md)
 - [개발 환경 셋팅](./START_DEV.md)
-- [상세 기능 문서](./docs/features/)
+- [유지보수 계획서](./AS.md)
 
 ---
 

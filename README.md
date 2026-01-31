@@ -127,38 +127,13 @@ npm run dev
 
 ## 📚 문서
 
-### 핵심 문서 (루트 경로)
+모든 프로젝트 문서는 [docs/](./docs) 폴더에 있습니다.
 
-- **[API.md](./API.md)** - API 명세 및 엔드포인트 문서
-- **[TABLES.md](./TABLES.md)** - 데이터베이스 스키마 정의
-- **[START_DEV.md](./START_DEV.md)** - 개발 환경 셋팅 가이드
-- **[FEAT.md](./FEAT.md)** - 구현된 기능 목록
-
-### 상세 문서 (docs/ 폴더)
-
-#### 설치 및 설정
-- [상세 설치 가이드](./docs/setup/installation.md)
-- [환경변수 설정](./docs/setup/environment.md)
-- [Docker 설정](./docs/setup/docker.md)
-
-#### 개발 가이드
-- [시스템 아키텍처](./docs/development/architecture.md)
-- [API 가이드](./docs/development/api-guide.md)
-- [데이터베이스 스키마](./docs/development/database.md)
-- [프론트엔드 구조](./docs/development/frontend.md)
-- [코딩 스타일 가이드](./docs/development/coding-style.md)
-
-#### 기능 문서
-- [인증/인가 시스템](./docs/features/authentication.md)
-- [Slack 인증 시스템](./docs/features/slack-verification.md)
-- [예약 시스템](./docs/features/reservations.md)
-- [관리자 기능](./docs/features/admin.md)
-- [보안 기능](./docs/features/security.md)
-
-#### 배포 및 운영
-- [프로덕션 배포](./docs/deployment/production.md)
-- [문제 해결 가이드](./docs/deployment/troubleshooting.md)
-- [백업 및 복원](./docs/maintenance/backup.md)
+- **[API.md](./docs/API.md)** - API 명세 및 엔드포인트 문서
+- **[TABLES.md](./docs/TABLES.md)** - 데이터베이스 스키마 정의
+- **[START_DEV.md](./docs/START_DEV.md)** - 개발 환경 셋팅 가이드
+- **[FEAT.md](./docs/FEAT.md)** - 구현된 기능 목록
+- **[AS.md](./docs/AS.md)** - 유지보수 계획서
 
 ## 👥 개발자
 

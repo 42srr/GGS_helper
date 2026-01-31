@@ -378,13 +378,12 @@ npm run lint
 1. **API 문서 확인**: http://localhost:3001/api-docs
 2. **데이터베이스 스키마 확인**: [TABLES.md](./TABLES.md)
 3. **구현된 기능 확인**: [FEAT.md](./FEAT.md)
-4. **코딩 스타일 가이드**: [docs/development/coding-style.md](./docs/development/coding-style.md)
 
 ---
 
 ## 참고 문서
 
-- [README.md](./README.md) - 프로젝트 개요
+- [README.md](../README.md) - 프로젝트 개요
 - [API.md](./API.md) - API 명세
 - [TABLES.md](./TABLES.md) - 데이터베이스 스키마
 - [FEAT.md](./FEAT.md) - 구현된 기능 목록
