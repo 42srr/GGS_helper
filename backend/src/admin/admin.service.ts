@@ -693,13 +693,13 @@ SELECT 'Backup completed successfully' as status;
       const topUsers = await this.dataSource.query(
         `
         SELECT
-          u.user_name as login,
-          u.user_name as displayName,
+          u.user_intra_id as login,
+          u.user_intra_id as displayName,
           COUNT(r.reservation_id) as reservation_count
         FROM users u
         LEFT JOIN reservation r ON u.user_id = r.user_id
           AND r.reservation_createdat >= $1
-        GROUP BY u.user_id, u.user_name
+        GROUP BY u.user_id, u.user_intra_id
         ORDER BY reservation_count DESC
         LIMIT 5
       `,
