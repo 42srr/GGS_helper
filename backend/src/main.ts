@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -41,8 +42,42 @@ async function bootstrap() {
     }),
   );
 
+  // Swagger API 문서 설정
+  const config = new DocumentBuilder()
+    .setTitle('GGS Helper API')
+    .setDescription('GGS Helper 회의실 예약 시스템 API 문서')
+    .setVersion('1.0')
+    .addTag('auth', '인증/인가')
+    .addTag('users', '사용자 관리')
+    .addTag('rooms', '회의실 관리')
+    .addTag('reservations', '예약 관리')
+    .addTag('admin', '관리자 기능')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'JWT 토큰을 입력하세요',
+        in: 'header',
+      },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+  });
+
   const port = configService.get<number>('PORT', 3001);
   await app.listen(port);
 
+  console.log(`🚀 Server running on: http://localhost:${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api-docs`);
 }
 bootstrap();

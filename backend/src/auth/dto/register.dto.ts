@@ -1,11 +1,24 @@
 import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
+  @ApiProperty({
+    description: '사용자 이름',
+    example: 'John Smith',
+    minLength: 2,
+    maxLength: 50,
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(50)
   name: string;
 
+  @ApiProperty({
+    description: '인트라 ID (영문, 숫자, -, _ 만 허용)',
+    example: 'jsmith',
+    minLength: 2,
+    maxLength: 50,
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(50)
@@ -14,6 +27,12 @@ export class RegisterDto {
   })
   intraId: string;
 
+  @ApiProperty({
+    description: '비밀번호 (8자 이상, 대소문자+숫자 포함)',
+    example: 'SecurePass123',
+    minLength: 8,
+    maxLength: 100,
+  })
   @IsString()
   @MinLength(8)
   @MaxLength(100)
@@ -22,6 +41,12 @@ export class RegisterDto {
   })
   password: string;
 
+  @ApiProperty({
+    description: 'Slack DM으로 받은 6자리 인증 코드',
+    example: '123456',
+    minLength: 6,
+    maxLength: 6,
+  })
   @IsString()
   @MinLength(6)
   @MaxLength(6)
