@@ -12,13 +12,9 @@ export function RegisterPage() {
     intraId: '',
     password: '',
     confirmPassword: '',
-    verificationCode: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const [codeSent, setCodeSent] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,92 +22,9 @@ export function RegisterPage() {
     setError('');
   };
 
-  // 인증 코드 전송
-  const handleSendVerification = async () => {
-    if (!formData.intraId) {
-      toast.error('인트라 ID를 입력해주세요');
-      return;
-    }
-
-    // 인트라 ID 검증
-    const intraIdRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!intraIdRegex.test(formData.intraId)) {
-      toast.error('인트라 ID는 영문, 숫자, 하이픈(-), 언더스코어(_)만 사용 가능합니다.');
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/send-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          intraId: formData.intraId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.message || '인증 코드 전송에 실패했습니다');
-        return;
-      }
-
-      setCodeSent(true);
-      toast.success(data.message);
-    } catch (err) {
-      toast.error('인증 코드 전송에 실패했습니다');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // 인증 코드 확인
-  const handleVerifyCode = async () => {
-    if (!formData.verificationCode || formData.verificationCode.length !== 6) {
-      toast.error('6자리 인증 코드를 입력해주세요');
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/verify-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          intraId: formData.intraId,
-          code: formData.verificationCode,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        toast.error(data.message || '인증 코드가 올바르지 않습니다');
-        return;
-      }
-
-      setIsVerified(true);
-      toast.success(data.message);
-    } catch (err) {
-      toast.error('인증 코드 확인에 실패했습니다');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!isVerified) {
-      setError('슬랙 인증을 먼저 완료해주세요');
-      return;
-    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
@@ -142,7 +55,6 @@ export function RegisterPage() {
           name: formData.name,
           intraId: formData.intraId,
           password: formData.password,
-          verificationCode: formData.verificationCode,
         }),
       });
 
@@ -217,65 +129,20 @@ export function RegisterPage() {
 
             <div>
               <Label htmlFor="intraId">인트라 ID</Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  id="intraId"
-                  name="intraId"
-                  type="text"
-                  required
-                  minLength={2}
-                  maxLength={50}
-                  value={formData.intraId}
-                  onChange={handleChange}
-                  placeholder="인트라 ID를 입력하세요"
-                  disabled={isLoading || codeSent}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  onClick={handleSendVerification}
-                  disabled={isVerifying || isLoading || codeSent || !formData.intraId}
-                  variant="outline"
-                >
-                  {isVerifying ? '전송 중...' : codeSent ? '전송됨' : '인증코드 전송'}
-                </Button>
-              </div>
-              <p className="text-xs text-secondary mt-1">
-                슬랙 프로필의 표시 이름과 동일한 인트라 ID를 입력하세요
-              </p>
+              <Input
+                id="intraId"
+                name="intraId"
+                type="text"
+                required
+                minLength={2}
+                maxLength={50}
+                value={formData.intraId}
+                onChange={handleChange}
+                placeholder="인트라 ID를 입력하세요"
+                disabled={isLoading}
+                className="mt-1"
+              />
             </div>
-
-            {codeSent && (
-              <div>
-                <Label htmlFor="verificationCode">슬랙 인증 코드</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="verificationCode"
-                    name="verificationCode"
-                    type="text"
-                    required
-                    minLength={6}
-                    maxLength={6}
-                    value={formData.verificationCode}
-                    onChange={handleChange}
-                    placeholder="6자리 인증 코드"
-                    disabled={isLoading || isVerified}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleVerifyCode}
-                    disabled={isVerifying || isLoading || isVerified || formData.verificationCode.length !== 6}
-                    variant="outline"
-                  >
-                    {isVerifying ? '확인 중...' : isVerified ? '✓ 완료' : '인증 확인'}
-                  </Button>
-                </div>
-                <p className="text-xs text-secondary mt-1">
-                  슬랙 DM으로 전송된 6자리 인증 코드를 입력하세요 (5분 유효)
-                </p>
-              </div>
-            )}
 
             <div>
               <Label htmlFor="password">비밀번호</Label>
@@ -315,7 +182,7 @@ export function RegisterPage() {
           <div>
             <Button
               type="submit"
-              disabled={isLoading || !isVerified}
+              disabled={isLoading}
               className="w-full flex items-center justify-center py-3 px-4"
             >
               {isLoading ? '처리 중...' : '회원가입'}

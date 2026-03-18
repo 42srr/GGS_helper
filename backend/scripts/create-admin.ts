@@ -49,6 +49,7 @@ async function createAdminUser() {
     const hashedPassword = await bcrypt.hash(adminData.password, 10);
 
     const adminUser = await userService.create({
+      name: 'Admin',
       ...adminData,
       password: hashedPassword,
     });
@@ -105,6 +106,7 @@ async function createMultipleAdmins() {
       const hashedPassword = await bcrypt.hash(adminData.password, 10);
 
       const adminUser = await userService.create({
+        name: adminData.intraId,
         ...adminData,
         password: hashedPassword,
       });

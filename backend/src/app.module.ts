@@ -18,7 +18,6 @@ import { Reservation } from './reservation/entities/reservation.entity';
 import { SystemSettings } from './admin/entities/system-settings.entity';
 import { ActivityLog } from './admin/entities/activity-log.entity';
 import { UserSession } from './admin/entities/user-session.entity';
-import { SlackVerification } from './auth/entities/slack-verification.entity';
 
 @Module({
   imports: [
@@ -50,9 +49,8 @@ import { SlackVerification } from './auth/entities/slack-verification.entity';
           SystemSettings,
           ActivityLog,
           UserSession,
-          SlackVerification,
         ],
-        synchronize: true, // Development mode - auto-create tables
+        synchronize: configService.get('NODE_ENV') !== 'production',
         timezone: 'Asia/Seoul', // 한국 시간대 설정
         // Connection pool settings
         extra: {

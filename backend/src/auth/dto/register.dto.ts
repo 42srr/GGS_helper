@@ -3,6 +3,17 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
+    description: '이름',
+    example: '홍길동',
+    minLength: 2,
+    maxLength: 50,
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  name: string;
+
+  @ApiProperty({
     description: '인트라 ID (영문, 숫자, -, _ 만 허용)',
     example: 'jsmith',
     minLength: 2,
@@ -29,15 +40,4 @@ export class RegisterDto {
     message: 'Password must contain uppercase, lowercase and number',
   })
   password: string;
-
-  @ApiProperty({
-    description: 'Slack DM으로 받은 6자리 인증 코드',
-    example: '123456',
-    minLength: 6,
-    maxLength: 6,
-  })
-  @IsString()
-  @MinLength(6)
-  @MaxLength(6)
-  verificationCode: string;
 }

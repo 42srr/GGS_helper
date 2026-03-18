@@ -2,11 +2,10 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
-import { User } from '../user/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { TokenBlacklistService } from './token-blacklist.service';
-import { SlackService } from './services/slack.service';
 import { AdminService } from '../admin/admin.service';
 import * as bcrypt from 'bcrypt';
 
@@ -19,7 +18,6 @@ export class AuthService {
     private configService: ConfigService,
     private userService: UserService,
     private tokenBlacklistService: TokenBlacklistService,
-    private slackService: SlackService,
     private adminService: AdminService,
   ) {}
 
@@ -55,15 +53,8 @@ export class AuthService {
     }
   }
 
-  // 새로운 인증 시스템 메서드
   async register(registerDto: RegisterDto): Promise<{ message: string }> {
-    const { intraId, password, verificationCode } = registerDto;
-
-    // 슬랙 인증 코드 확인
-    const isVerified = await this.slackService.isCodeVerified(intraId);
-    if (!isVerified) {
-      throw new BadRequestException('인증 코드가 유효하지 않거나 만료되었습니다. 인증 코드를 다시 요청해주세요.');
-    }
+    const { name, intraId, password } = registerDto;
 
     // intraId 중복 체크
     const existingUser = await this.userService.findByIntraId(intraId);
@@ -76,14 +67,40 @@ export class AuthService {
 
     // 사용자 생성
     await this.userService.create({
+      name,
       intraId,
       password: hashedPassword,
     });
 
-    // 인증 완료 후 슬랙 인증 데이터 삭제
-    await this.slackService.deleteVerification(intraId);
-
     return { message: '회원가입이 완료되었습니다. 로그인해주세요.' };
+  }
+
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{ message: string }> {
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    // 현재 사용자 조회 (비밀번호 포함)
+    const user = await this.userService.findOneWithPassword(userId);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다');
+    }
+
+    // 현재 비밀번호 검증
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('현재 비밀번호가 올바르지 않습니다');
+    }
+
+    // 새 비밀번호가 현재 비밀번호와 같은지 확인
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException('새 비밀번호는 현재 비밀번호와 달라야 합니다');
+    }
+
+    // 새 비밀번호 해싱 및 저장
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userService.updateUser(userId, { password: hashedPassword });
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 
   async login(

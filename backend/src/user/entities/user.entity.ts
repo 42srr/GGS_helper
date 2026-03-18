@@ -20,6 +20,9 @@ export class User {
   @Column({ name: 'user_intra_id', unique: true, length: 50 })
   intraId: string;
 
+  @Column({ name: 'user_name', length: 50 })
+  name: string;
+
   @Column({ name: 'user_password', length: 255, select: false })
   password: string;
 
