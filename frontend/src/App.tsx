@@ -17,6 +17,7 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminBackupPage } from './pages/admin/AdminBackupPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminStatisticsPage } from './pages/admin/AdminStatisticsPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -42,6 +43,11 @@ function App() {
           <Route path="/my-reservations" element={
             <ProtectedRoute>
               <MyReservationsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/change-password" element={
+            <ProtectedRoute>
+              <ChangePasswordPage />
             </ProtectedRoute>
           } />
           <Route path="/rooms" element={

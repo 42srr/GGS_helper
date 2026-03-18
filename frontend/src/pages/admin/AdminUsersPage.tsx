@@ -128,7 +128,7 @@ export function AdminUsersPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify({ isActive: !currentStatus }),
+        body: JSON.stringify({ isAvailable: !currentStatus }),
       });
 
       if (response.ok) {

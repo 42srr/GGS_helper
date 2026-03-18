@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Plus, Clock, ChevronDown, User, LogOut, Shield } from "lucide-react";
+import { Calendar, Plus, Clock, ChevronDown, User, LogOut, Shield, KeyRound } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function Header() {
@@ -87,7 +87,7 @@ export function Header() {
                   <Button variant="outline" className="flex items-center space-x-2">
                     <User className="w-4 h-4" />
                     <span className="hidden md:inline">
-                      {user?.name || user?.username}
+                      {user?.name || user?.intraId}
                     </span>
                     <ChevronDown className="w-3 h-3" />
                   </Button>
@@ -95,10 +95,17 @@ export function Header() {
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <div className="flex flex-col items-start px-2 py-2">
-                      <span className="font-medium text-primary">{user?.name || user?.username}</span>
-                      <span className="text-xs text-secondary">{user?.email}</span>
+                      <span className="font-medium text-primary">{user?.name || user?.intraId}</span>
+                      <span className="text-xs text-secondary">{user?.intraId}</span>
                       <span className="text-xs text-accent font-medium">{user?.role}</span>
                     </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/change-password" className="flex items-center">
+                      <KeyRound className="w-4 h-4 mr-2" />
+                      비밀번호 변경
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {isAdmin() && (

@@ -29,6 +29,13 @@ export class UserService {
     });
   }
 
+  async findOneWithPassword(userId: number): Promise<User | null> {
+    return await this.userRepository.findOne({
+      where: { userId },
+      select: ['userId', 'intraId', 'password'],
+    });
+  }
+
   async findByIntraId(intraId: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { intraId },
