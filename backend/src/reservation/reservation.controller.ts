@@ -22,6 +22,7 @@ import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { CheckConflictDto } from './dto/check-conflict.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -29,7 +30,7 @@ import { multerConfig } from '../common/multer.config';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('reservations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
@@ -134,7 +135,6 @@ export class ReservationController {
   }
 
   @Post(':id/no-show')
-  @Public()
   reportNoShow(@Param('id') id: string) {
     return this.reservationService.reportNoShow(+id);
   }
