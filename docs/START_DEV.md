@@ -75,11 +75,11 @@ cp backend/.env.example backend/.env
 ```env
 # 서버 설정
 NODE_ENV=development
-PORT=3001
+PORT=6112
 
 # 데이터베이스 설정
 DATABASE_HOST=localhost
-DATABASE_PORT=5432
+DATABASE_PORT=6113
 DATABASE_USER=postgres
 DATABASE_PASSWORD=postgres
 DATABASE_NAME=ggs_helper
@@ -89,15 +89,13 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=1d
 
 # CORS 설정
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:6111
 
-# Slack 설정 (선택사항)
-SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
+# Slack 설정은 더 이상 사용되지 않습니다.
 ```
 
 **중요**:
 - `JWT_SECRET`은 보안을 위해 반드시 변경해야 합니다.
-- `SLACK_BOT_TOKEN`은 Slack 인증 기능을 사용하려면 필수입니다.
 
 ### Frontend 환경변수
 
@@ -111,7 +109,7 @@ cp frontend/.env.example frontend/.env
 **`frontend/.env` 파일 내용**:
 
 ```env
-VITE_API_BASE_URL=http://localhost:3001
+VITE_API_BASE_URL=http://localhost:6112
 ```
 
 ---
@@ -133,7 +131,7 @@ cp .env.example .env
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=ggs_helper
-POSTGRES_PORT=5432
+POSTGRES_PORT=6113
 ```
 
 2. **Docker Compose로 데이터베이스 시작**
@@ -179,7 +177,7 @@ cd backend
 npm run start:dev
 ```
 
-백엔드 서버가 `http://localhost:3001`에서 실행됩니다.
+백엔드 서버가 `http://localhost:6112`에서 실행됩니다.
 
 **터미널 2 - 프론트엔드 실행**:
 
@@ -188,7 +186,7 @@ cd frontend
 npm run dev
 ```
 
-프론트엔드 서버가 `http://localhost:3000`에서 실행됩니다.
+프론트엔드 서버가 `http://localhost:6111`에서 실행됩니다.
 
 ### 방법 2: 백그라운드 실행
 
@@ -210,10 +208,10 @@ npm run dev
 
 | 서비스              | URL                              | 설명                      |
 | ------------------- | -------------------------------- | ------------------------- |
-| **Frontend**        | http://localhost:3000            | 사용자 웹 인터페이스      |
-| **Backend API**     | http://localhost:3001            | REST API 서버             |
-| **Swagger API 문서** | http://localhost:3001/api-docs   | API 명세 문서 (Swagger UI) |
-| **PostgreSQL**      | localhost:5432                   | 데이터베이스 (Docker)     |
+| **Frontend**        | http://localhost:6111            | 사용자 웹 인터페이스      |
+| **Backend API**     | http://localhost:6112            | REST API 서버             |
+| **Swagger API 문서** | http://localhost:6112/api-docs   | API 명세 문서 (Swagger UI) |
+| **PostgreSQL**      | localhost:6113                   | 데이터베이스 (Docker)     |
 
 ---
 
@@ -268,8 +266,8 @@ npm run create-admin list
 **증상**: Network Error 또는 CORS Error
 
 **해결 방법**:
-- `frontend/.env` 파일의 `VITE_API_BASE_URL`이 `http://localhost:3001`인지 확인
-- 백엔드 서버가 실행 중인지 확인: http://localhost:3001
+- `frontend/.env` 파일의 `VITE_API_BASE_URL`이 `http://localhost:6112`인지 확인
+- 백엔드 서버가 실행 중인지 확인: http://localhost:6112
 - 브라우저 콘솔에서 에러 메시지 확인
 
 ### 3. npm install 실패
@@ -311,14 +309,9 @@ docker-compose down -v  # 볼륨까지 삭제
 docker-compose up -d
 ```
 
-### 6. Slack 인증이 작동하지 않는 경우
+### 6. Slack 연동 관련
 
-**증상**: Slack 인증 코드 전송 실패
-
-**해결 방법**:
-- `backend/.env` 파일에 `SLACK_BOT_TOKEN`이 설정되어 있는지 확인
-- Slack Bot Token이 유효한지 확인 (xoxb-로 시작해야 함)
-- Slack Bot에 `users:read`, `users:read.email`, `chat:write` 권한이 있는지 확인
+Slack 연동 기능은 제거되었습니다. 기존 Slack 관련 환경변수는 더 이상 필요하지 않습니다.
 
 ---
 
@@ -375,7 +368,7 @@ npm run lint
 
 개발 환경 셋팅이 완료되었다면:
 
-1. **API 문서 확인**: http://localhost:3001/api-docs
+1. **API 문서 확인**: http://localhost:6112/api-docs
 2. **데이터베이스 스키마 확인**: [TABLES.md](./TABLES.md)
 3. **구현된 기능 확인**: [FEAT.md](./FEAT.md)
 
@@ -390,5 +383,5 @@ npm run lint
 
 ---
 
-**최종 수정일**: 2025-01-31
+**최종 수정일**: 2026-03-18
 **작성자**: GGS (42경산 개발 동아리)

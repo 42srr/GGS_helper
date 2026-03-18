@@ -89,15 +89,14 @@ npm run dev
 ### 기본 관리자 계정
 
 ```
-이메일: admin@ggs.com
-사용자 ID: admin
-비밀번호: Admin1234!
+인트라 ID: admin
+비밀번호: Admin1234
 ```
 
 ## 🛠 기술 스택
 
 ### Frontend
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite (빌드 도구)
 - React Router (라우팅)
 - Shadcn/ui (UI 컴포넌트)

@@ -163,8 +163,8 @@ GET /admin/backup/download/:id
 
 #### 4.3.1 데이터베이스 인덱스
 - 주요 인덱스 점검:
-  - `users.user_username` (UNIQUE)
-  - `users.user_email` (UNIQUE)
+  - `users.user_intra_id` (UNIQUE)
+  - `users.user_name`
   - `reservations.room_id`, `reservations.user_id`
   - `reservations.reservation_starttime`
 
@@ -424,8 +424,8 @@ GET /admin/backup/download/:id
 ### 14.1 일일 점검 체크리스트
 ```markdown
 ## 일일 점검 - YYYY-MM-DD
-- [ ] Frontend 서비스 정상 동작 확인 (http://localhost:5173)
-- [ ] Backend API 정상 동작 확인 (http://localhost:3001)
+- [ ] Frontend 서비스 정상 동작 확인 (http://localhost:6111)
+- [ ] Backend API 정상 동작 확인 (http://localhost:6112)
 - [ ] 데이터베이스 연결 확인 (docker ps)
 - [ ] 에러 로그 확인 (GET /admin/activities/recent)
 - [ ] 백업 자동화 확인
@@ -505,6 +505,6 @@ npm run typeorm:migration:run
 ---
 
 **문서 작성일**: 2025-12-17
-**최종 수정일**: 2025-12-17
+**최종 수정일**: 2026-03-18
 **작성자**: yutsong (GGS)
 **버전**: 1.0.0

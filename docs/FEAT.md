@@ -15,28 +15,25 @@
 
 ## 인증 및 사용자 관리
 
-### Slack 기반 인증 시스템 ✅
+### 회원가입 시스템 ✅
 
 **구현 완료**: 2025-01-31
 
-Slack Bot을 이용한 사용자 인증 시스템
+이름, 인트라 ID, 비밀번호로 회원가입하는 시스템
 
 **주요 기능**:
-- 인트라 ID로 Slack 사용자 검색
-- 6자리 랜덤 인증 코드 생성 및 DM 전송
-- 인증 코드 5분간 유효
-- 회원가입 시 인증 코드 검증 필수
+- 이름, 인트라 ID, 비밀번호 입력
+- 비밀번호 복잡도 검증 (대소문자, 숫자 포함, 8자 이상)
+- 인트라 ID 중복 검사
+- Rate Limiting (1시간에 3번)
 
-**기술 스택**:
-- `@slack/web-api` - Slack API 통합
-- TypeORM 엔티티 (`SlackVerification`)
-- Rate Limiting (인증 코드 전송: 60초 3번, 검증: 60초 10번)
+**API 엔드포인트**:
+- `POST /auth/register` - 회원가입
 
 **관련 파일**:
-- [backend/src/auth/services/slack.service.ts](backend/src/auth/services/slack.service.ts)
-- [backend/src/auth/entities/slack-verification.entity.ts](backend/src/auth/entities/slack-verification.entity.ts)
-
-**상세 문서**: Slack 인증 시스템 구현 완료
+- [backend/src/auth/auth.service.ts](backend/src/auth/auth.service.ts)
+- [backend/src/auth/dto/register.dto.ts](backend/src/auth/dto/register.dto.ts)
+- [frontend/src/pages/RegisterPage.tsx](frontend/src/pages/RegisterPage.tsx)
 
 ---
 
@@ -60,6 +57,27 @@ JWT (JSON Web Token)를 사용한 무상태 인증 시스템
 **관련 파일**:
 - [backend/src/auth/auth.service.ts](backend/src/auth/auth.service.ts)
 - [backend/src/auth/guards/jwt-auth.guard.ts](backend/src/auth/guards/jwt-auth.guard.ts)
+
+---
+
+### 비밀번호 변경 ✅
+
+**구현 완료**: 2026-03-18
+
+현재 비밀번호를 확인한 후 새 비밀번호로 변경하는 기능
+
+**주요 기능**:
+- 현재 비밀번호 검증
+- 새 비밀번호 복잡도 검증
+- 동일 비밀번호 변경 방지
+
+**API 엔드포인트**:
+- `PATCH /auth/change-password` - 비밀번호 변경
+
+**관련 파일**:
+- [backend/src/auth/auth.service.ts](backend/src/auth/auth.service.ts)
+- [backend/src/auth/dto/change-password.dto.ts](backend/src/auth/dto/change-password.dto.ts)
+- [frontend/src/pages/ChangePasswordPage.tsx](frontend/src/pages/ChangePasswordPage.tsx)
 
 ---
 
@@ -215,7 +233,7 @@ Excel 파일을 이용한 회의실 정보 일괄 등록
 노쇼 신고 및 자동 패널티 시스템
 
 **주요 기능**:
-- 예약 시작 10분 후부터 노쇼 신고 가능 (Public API)
+- 예약 시작 10분 후부터 노쇼 신고 가능 (인증 필요)
 - 노쇼 발생 시 7일간 예약 정지 자동 적용
 - 노쇼 3회 시 관리자 면담 필요 (수동 처리)
 
@@ -374,8 +392,6 @@ API 엔드포인트별 요청 횟수 제한
 **기술 스택**: `@nestjs/throttler`
 
 **Rate Limit 설정**:
-- `POST /auth/send-verification`: 60초에 3번
-- `POST /auth/verify-code`: 60초에 10번
 - `POST /auth/register`: 1시간에 3번
 - `POST /auth/login`: 60초에 5번
 
@@ -451,6 +467,53 @@ bcrypt를 사용한 비밀번호 해싱
 
 ---
 
+### Docker 배포 환경 ✅
+
+**구현 완료**: 2026-03-18
+
+Docker Compose를 이용한 프로덕션 배포 환경
+
+**주요 기능**:
+- PostgreSQL, Backend, Frontend 3개 컨테이너 구성
+- Nginx 리버스 프록시 (SPA + API 프록시)
+- 비root 사용자 실행
+- 메모리 제한 및 PostgreSQL 튜닝 (t3.micro 대응)
+- 보안 헤더 설정
+
+**관련 파일**:
+- [deploy/docker-compose.yml](deploy/docker-compose.yml)
+- [backend/Dockerfile](backend/Dockerfile)
+- [frontend/Dockerfile](frontend/Dockerfile)
+- [frontend/nginx.conf](frontend/nginx.conf)
+
+---
+
+### E2E 통합 테스트 ✅
+
+**구현 완료**: 2026-03-18
+
+Jest + Supertest 기반 E2E 통합 테스트 (46개 테스트 케이스)
+
+**테스트 범위**:
+- Auth: 회원가입, 로그인, 비밀번호 변경, 로그아웃
+- Room: CRUD 및 권한 검증
+- Reservation: 생성, 충돌 체크, 취소, 관리자 권한
+- User: 상태 변경, 역할 변경, 예약 금지
+
+**실행 방법**:
+```bash
+cd backend
+npm run test:e2e
+```
+
+**관련 파일**:
+- [backend/test/auth.e2e-spec.ts](backend/test/auth.e2e-spec.ts)
+- [backend/test/room.e2e-spec.ts](backend/test/room.e2e-spec.ts)
+- [backend/test/reservation.e2e-spec.ts](backend/test/reservation.e2e-spec.ts)
+- [backend/test/user.e2e-spec.ts](backend/test/user.e2e-spec.ts)
+
+---
+
 ## 개발자 도구
 
 ### Swagger API 문서 ✅
@@ -465,7 +528,7 @@ Swagger UI를 통한 인터랙티브 API 문서
 - API 테스트 기능 (Try it out)
 - JWT 인증 지원 (Bearer Token)
 
-**접속 URL**: http://localhost:3001/api-docs
+**접속 URL**: http://localhost:6112/api-docs
 
 **데코레이터**:
 - `@ApiTags()` - API 그룹핑
@@ -576,6 +639,23 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 ## 변경 이력
 
+### 2026-03-18 - 42 통합 제거 및 배포 준비
+
+- Slack 인증 시스템 제거, 이름/인트라ID/비밀번호 회원가입으로 변경
+- 비밀번호 변경 기능 추가
+- Docker 배포 환경 구성 (docker-compose, Dockerfile, Nginx)
+- 보안 취약점 수정 (JWT 폴백, RolesGuard, @Public 노쇼 등)
+- E2E 통합 테스트 46개 케이스 구현
+- 프론트엔드 빌드 에러 수정
+- AdminUsersPage 사용자 상태 변경 버그 수정
+
+**Breaking Changes**:
+- Slack 인증 관련 엔드포인트 제거 (send-verification, verify-code)
+- 회원가입 요청에 name 필드 추가, verificationCode 제거
+- 노쇼 신고 엔드포인트 인증 필수로 변경
+
+---
+
 ### 2025-01-31 - Slack 인증 시스템 구현
 
 - Slack Bot 기반 인증 코드 전송/검증 시스템 구현
@@ -620,5 +700,5 @@ CLI로 관리자 계정을 생성 및 관리하는 스크립트
 
 ---
 
-**최종 수정일**: 2025-01-31
+**최종 수정일**: 2026-03-18
 **작성자**: GGS (42경산 개발 동아리)

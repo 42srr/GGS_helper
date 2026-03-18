@@ -2,9 +2,9 @@
 
 ## Base URL
 ```
-Backend: http://localhost:3001
-Frontend: http://localhost:3000
-Swagger API 문서: http://localhost:3001/api-docs
+Backend: http://localhost:6112
+Frontend: http://localhost:6111
+Swagger API 문서: http://localhost:6112/api-docs
 ```
 
 ## Authentication
@@ -33,70 +33,7 @@ Authorization: Bearer <access_token>
 
 ## 1. 인증 (Auth)
 
-### 1.1 Slack 인증 코드 전송
-```
-POST /auth/send-verification
-```
-
-**Rate Limit**: 60초에 3번
-
-**Request Body**:
-```json
-{
-  "intraId": "jsmith"
-}
-```
-
-**Validation**:
-- intraId: 2-50자, 영문/숫자/하이픈/언더스코어만 허용
-
-**Response**:
-```json
-{
-  "message": "인증 코드가 슬랙 DM으로 전송되었습니다. 5분 이내에 입력해주세요."
-}
-```
-
-**Error Responses**:
-- `400`: Slack에서 사용자를 찾을 수 없음
-- `429`: Rate Limit 초과
-
----
-
-### 1.2 Slack 인증 코드 확인
-```
-POST /auth/verify-code
-```
-
-**Rate Limit**: 60초에 10번
-
-**Request Body**:
-```json
-{
-  "intraId": "jsmith",
-  "code": "123456"
-}
-```
-
-**Response (성공)**:
-```json
-{
-  "success": true,
-  "message": "인증이 완료되었습니다."
-}
-```
-
-**Response (실패)**:
-```json
-{
-  "success": false,
-  "message": "인증 코드가 올바르지 않거나 만료되었습니다."
-}
-```
-
----
-
-### 1.3 회원가입
+### 1.1 회원가입
 ```
 POST /auth/register
 ```
@@ -106,16 +43,16 @@ POST /auth/register
 **Request Body**:
 ```json
 {
+  "name": "홍길동",
   "intraId": "jsmith",
-  "password": "SecurePass123",
-  "verificationCode": "123456"
+  "password": "SecurePass123"
 }
 ```
 
 **Validation**:
+- name: 2-50자
 - intraId: 2-50자, 영문/숫자/하이픈/언더스코어만 허용
 - password: 8자 이상, 대소문자/숫자 포함 필수
-- verificationCode: 6자리 숫자
 
 **Response**:
 ```json
@@ -125,13 +62,13 @@ POST /auth/register
 ```
 
 **Error Responses**:
-- `400`: 인증 미완료 또는 유효성 검증 실패
+- `400`: 유효성 검증 실패
 - `409`: 이미 사용 중인 인트라 ID
 - `429`: Rate Limit 초과
 
 ---
 
-### 1.4 로그인
+### 1.2 로그인
 ```
 POST /auth/login
 ```
@@ -164,7 +101,7 @@ POST /auth/login
 
 ---
 
-### 1.5 로그아웃
+### 1.3 로그아웃
 ```
 POST /auth/logout
 ```
@@ -180,7 +117,7 @@ POST /auth/logout
 
 ---
 
-### 1.6 내 프로필 조회
+### 1.4 내 프로필 조회
 ```
 GET /auth/me
 ```
@@ -195,6 +132,38 @@ GET /auth/me
   "role": "student"
 }
 ```
+
+---
+
+### 1.5 비밀번호 변경
+```
+PATCH /auth/change-password
+```
+
+**Auth Required**: Yes
+
+**Request Body**:
+```json
+{
+  "currentPassword": "OldPass123",
+  "newPassword": "NewPass456"
+}
+```
+
+**Validation**:
+- newPassword: 8자 이상, 대소문자/숫자 포함 필수
+- 현재 비밀번호와 동일 불가
+
+**Response**:
+```json
+{
+  "message": "비밀번호가 성공적으로 변경되었습니다."
+}
+```
+
+**Error Responses**:
+- `400`: 현재 비밀번호 불일치 또는 유효성 검증 실패
+- `401`: 인증 실패
 
 ---
 
@@ -279,15 +248,12 @@ GET /users/stats
 ```json
 {
   "userId": 1,
-  "name": "유성태",
-  "info": {
-    "level": 3.14,
-    "wallet": 50,
-    "evalPoint": 10,
-    "studyTime": 120.5,
-    "coalition": "Gun",
-    "activeProject": "[...]"
-  }
+  "intraId": "jsmith",
+  "name": "홍길동",
+  "role": "student",
+  "isAvailable": true,
+  "noShowCount": 0,
+  "lateCount": 0
 }
 ```
 
@@ -331,51 +297,7 @@ PATCH /users/:id/reservation-ban
 
 ---
 
-### 2.7 대시보드 데이터 조회
-```
-GET /users/dashboard
-```
-
-**Auth Required**: Yes (본인만)
-
-**Response**:
-```json
-{
-  "user": {
-    "id": 1,
-    "email": "yutsong@student.42seoul.kr",
-    "login": "yutsong",
-    "displayName": "유성태",
-    "imageUrl": "..."
-  },
-  "stats": {
-    "level": 3.14,
-    "wallet": 50,
-    "correctionPoint": 10,
-    "monthlyHours": 120.5,
-    "cursusName": "42cursus",
-    "grade": "Cadet",
-    "coalitions": [{"name": "Gun"}],
-    "activeProjects": [...],
-    "dataLastUpdated": "2025-12-01T00:00:00Z"
-  }
-}
-```
-
----
-
-### 2.8 사용자 통계 새로고침
-```
-POST /users/stats/refresh
-```
-
-**Auth Required**: Yes (본인만)
-
-최신 데이터를 강제로 가져와서 업데이트
-
----
-
-### 2.9 사용자 데이터 Excel 내보내기
+### 2.7 사용자 데이터 Excel 내보내기
 ```
 GET /users/export
 ```
@@ -654,7 +576,7 @@ DELETE /reservations/:id
 POST /reservations/:id/no-show
 ```
 
-**Auth Required**: No (Public)
+**Auth Required**: Yes
 
 예약 시작 시간 10분 후부터 노쇼 신고 가능
 
@@ -785,7 +707,9 @@ PATCH /reservations/admin/:id/status
 - `confirmed`: 확정
 - `pending`: 대기
 - `cancelled`: 취소
-- `completed`: 완료
+- `finished`: 완료
+- `in_progress`: 진행 중
+- `awaiting_checkout`: 체크아웃 대기
 
 ---
 
@@ -1067,8 +991,6 @@ GET /admin/activities/recent?limit=10
 @nestjs/throttler를 사용한 Rate Limiting이 적용되어 있습니다.
 
 ### Auth 엔드포인트
-- `POST /auth/send-verification`: 60초에 3번
-- `POST /auth/verify-code`: 60초에 10번
 - `POST /auth/register`: 1시간에 3번
 - `POST /auth/login`: 60초에 5번
 
@@ -1090,7 +1012,7 @@ Rate Limit 초과 시 HTTP 429 응답을 반환합니다.
 
 ## 추가 문서
 
-- **Swagger API 문서**: http://localhost:3001/api-docs
+- **Swagger API 문서**: http://localhost:6112/api-docs
 - **데이터베이스 스키마**: [TABLES.md](./TABLES.md)
 - **개발 환경 셋팅**: [START_DEV.md](./START_DEV.md)
 - **구현된 기능**: [FEAT.md](./FEAT.md)
@@ -1098,5 +1020,5 @@ Rate Limit 초과 시 HTTP 429 응답을 반환합니다.
 ---
 
 **API Version**: 1.0.0
-**최종 수정일**: 2025-01-31
+**최종 수정일**: 2026-03-18
 **작성자**: GGS (42경산 개발 동아리)
