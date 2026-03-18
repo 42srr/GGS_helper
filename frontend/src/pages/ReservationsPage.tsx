@@ -88,7 +88,7 @@ export function ReservationsPage() {
     setSelectedRooms([]);
   };
 
-  const handleEmptySlotClick = (room: Room, timeSlot: TimeSlot) => {
+  const handleEmptySlotClick = (_room: Room, _timeSlot: TimeSlot) => {
     // 빈 슬롯 클릭 시 예약 생성 페이지로 이동
 
     // TODO: 빠른 예약 모달 또는 예약 생성 페이지로 이동

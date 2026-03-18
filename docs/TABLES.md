@@ -8,7 +8,7 @@
 
 **DBMS**: PostgreSQL 16
 **ORM**: TypeORM
-**마이그레이션 방식**: `synchronize: true` (개발 환경)
+**마이그레이션 방식**: `synchronize: true` (개발 환경) / `synchronize: false` (프로덕션)
 
 ---
 
@@ -16,61 +16,41 @@
 
 사용자 정보를 관리하는 테이블
 
-| Column                | Type      | Nullable | Default           | Description                         |
-| --------------------- | --------- | -------- | ----------------- | ----------------------------------- |
-| user_id               | integer   | NO       | AUTO_INCREMENT    | 사용자 고유 ID (Primary Key)        |
-| user_intra_id         | varchar(50) | NO     | -                 | 인트라 ID (Unique)                  |
-| user_password         | varchar(255) | NO    | -                 | 비밀번호 (bcrypt 해시)              |
-| user_isavailable      | boolean   | NO       | true              | 사용자 활성화 상태                  |
-| user_role             | enum      | NO       | 'student'         | 사용자 역할 (student, staff, admin) |
-| user_createdat        | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                           |
-| user_updatedat        | timestamp | NO       | CURRENT_TIMESTAMP | 수정 일시                           |
-| user_lastloginat      | timestamp | YES      | -                 | 마지막 로그인 일시                  |
-| no_show_count         | integer   | NO       | 0                 | 노쇼 횟수                           |
-| last_no_show_at       | timestamp | YES      | -                 | 마지막 노쇼 발생 일시               |
-| late_count            | integer   | NO       | 0                 | 지각 횟수                           |
-| is_reservation_banned | boolean   | NO       | false             | 예약 정지 여부                      |
-| ban_until             | timestamp | YES      | -                 | 예약 정지 해제 일시                 |
+| Column                | Type        | Nullable | Default           | Description                         |
+| --------------------- | ----------- | -------- | ----------------- | ----------------------------------- |
+| user_id               | integer     | NO       | AUTO_INCREMENT    | 사용자 고유 ID (Primary Key)        |
+| user_intra_id         | varchar(50) | NO       | -                 | 인트라 ID (Unique)                  |
+| user_name             | varchar(50) | NO       | -                 | 사용자 이름                         |
+| user_password         | varchar(255)| NO       | -                 | 비밀번호 (bcrypt 해시, select: false) |
+| user_isavailable      | boolean     | NO       | true              | 사용자 활성화 상태                  |
+| user_role             | enum        | NO       | 'student'         | 사용자 역할 (student, staff, admin) |
+| user_createdat        | timestamp   | NO       | CURRENT_TIMESTAMP | 생성 일시                           |
+| user_updatedat        | timestamp   | NO       | CURRENT_TIMESTAMP | 수정 일시                           |
+| user_lastloginat      | timestamp   | YES      | -                 | 마지막 로그인 일시                  |
+| no_show_count         | integer     | NO       | 0                 | 노쇼 횟수                           |
+| last_no_show_at       | timestamp   | YES      | -                 | 마지막 노쇼 발생 일시               |
+| late_count            | integer     | NO       | 0                 | 지각 횟수                           |
+| is_reservation_banned | boolean     | NO       | false             | 예약 정지 여부                      |
+| ban_until             | timestamp   | YES      | -                 | 예약 정지 해제 일시                 |
 
 **인덱스**:
 - PRIMARY KEY: `user_id`
 - UNIQUE: `user_intra_id`
+- INDEX: `user_lastloginat`
+- INDEX: `user_createdat`
+- INDEX: `user_role`
 
 **관계**:
 - OneToMany: `reservations` (Reservation)
 
 **비고**:
-- `user_password`는 bcrypt로 해싱되어 저장 (salt rounds: 10)
+- `user_password`는 bcrypt로 해싱되어 저장 (salt rounds: 10), 기본 쿼리에서 제외 (`select: false`)
 - 기본 역할은 `student`
 - 노쇼 발생 시 7일간 예약 정지 (`is_reservation_banned = true`, `ban_until` 설정)
 
 ---
 
-## 2. slack_verifications
-
-Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
-
-| Column              | Type        | Nullable | Default           | Description                |
-| ------------------- | ----------- | -------- | ----------------- | -------------------------- |
-| id                  | integer     | NO       | AUTO_INCREMENT    | 고유 ID (Primary Key)      |
-| intra_id            | varchar(50) | NO       | -                 | 인트라 ID                  |
-| verification_code   | varchar(6)  | NO       | -                 | 6자리 인증 코드            |
-| slack_user_id       | varchar     | YES      | -                 | Slack 사용자 ID            |
-| is_verified         | boolean     | NO       | false             | 인증 완료 여부             |
-| created_at          | timestamp   | NO       | CURRENT_TIMESTAMP | 생성 일시                  |
-| expires_at          | timestamp   | NO       | -                 | 만료 일시 (생성 후 5분)    |
-
-**인덱스**:
-- PRIMARY KEY: `id`
-
-**비고**:
-- 인증 코드는 6자리 숫자로 생성
-- 유효 기간은 5분
-- 회원가입 완료 후 `is_verified = true`로 업데이트
-
----
-
-## 3. room
+## 2. room
 
 회의실/공간 정보를 관리하는 테이블
 
@@ -89,6 +69,8 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 
 **인덱스**:
 - PRIMARY KEY: `room_id`
+- INDEX: `room_isavailable`
+- INDEX: `room_name`
 
 **관계**:
 - OneToMany: `reservations` (Reservation)
@@ -99,35 +81,35 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 
 ---
 
-## 4. reservation
+## 3. reservation
 
 예약 정보를 관리하는 테이블
 
-| Column                  | Type      | Nullable | Default           | Description                |
-| ----------------------- | --------- | -------- | ----------------- | -------------------------- |
-| reservation_id          | integer   | NO       | AUTO_INCREMENT    | 예약 고유 ID (Primary Key) |
-| room_id                 | integer   | NO       | -                 | 방 ID (Foreign Key)        |
-| user_id                 | integer   | NO       | -                 | 사용자 ID (Foreign Key)    |
-| reservation_title       | varchar   | NO       | -                 | 예약 제목                  |
-| reservation_description | text      | YES      | -                 | 예약 설명                  |
-| reservation_starttime   | timestamp | NO       | -                 | 예약 시작 시간             |
-| reservation_endtime     | timestamp | NO       | -                 | 예약 종료 시간             |
-| reservation_attendees   | integer   | NO       | 0                 | 참석자 수                  |
-| team_name               | varchar   | YES      | -                 | 팀 이름                    |
-| reservation_status      | varchar   | NO       | 'confirmed'       | 예약 상태                  |
-| is_no_show              | boolean   | NO       | false             | 노쇼 여부                  |
-| no_show_reported_at     | timestamp | YES      | -                 | 노쇼 신고 일시             |
-| no_show_report_count    | integer   | NO       | 0                 | 노쇼 신고 횟수             |
-| check_in_at             | timestamp | YES      | -                 | 체크인 일시                |
-| is_late                 | boolean   | NO       | false             | 지각 여부                  |
-| checkout_photo_path     | varchar(500) | YES   | -                 | 체크아웃 사진 경로         |
-| checkout_photo_url      | varchar(500) | YES   | -                 | 체크아웃 사진 URL          |
-| checkout_verified_at    | timestamp | YES      | -                 | 체크아웃 검증 일시         |
-| checkout_notes          | text      | YES      | -                 | 체크아웃 메모              |
-| reservation_createdat   | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                  |
-| reservation_updatedat   | timestamp | NO       | CURRENT_TIMESTAMP | 수정 일시                  |
+| Column                  | Type         | Nullable | Default           | Description                |
+| ----------------------- | ------------ | -------- | ----------------- | -------------------------- |
+| reservation_id          | integer      | NO       | AUTO_INCREMENT    | 예약 고유 ID (Primary Key) |
+| room_id                 | integer      | NO       | -                 | 방 ID (Foreign Key)        |
+| user_id                 | integer      | NO       | -                 | 사용자 ID (Foreign Key)    |
+| reservation_title       | varchar      | NO       | -                 | 예약 제목                  |
+| reservation_description | text         | YES      | -                 | 예약 설명                  |
+| reservation_starttime   | timestamp    | NO       | -                 | 예약 시작 시간             |
+| reservation_endtime     | timestamp    | NO       | -                 | 예약 종료 시간             |
+| reservation_attendees   | integer      | NO       | 0                 | 참석자 수                  |
+| team_name               | varchar      | YES      | -                 | 팀 이름                    |
+| reservation_status      | varchar      | NO       | 'confirmed'       | 예약 상태                  |
+| is_no_show              | boolean      | NO       | false             | 노쇼 여부                  |
+| no_show_reported_at     | timestamp    | YES      | -                 | 노쇼 신고 일시             |
+| no_show_report_count    | integer      | NO       | 0                 | 노쇼 신고 횟수             |
+| check_in_at             | timestamp    | YES      | -                 | 체크인 일시                |
+| is_late                 | boolean      | NO       | false             | 지각 여부                  |
+| checkout_photo_path     | varchar(500) | YES      | -                 | 체크아웃 사진 경로         |
+| checkout_photo_url      | varchar(500) | YES      | -                 | 체크아웃 사진 URL          |
+| checkout_verified_at    | timestamp    | YES      | -                 | 체크아웃 검증 일시         |
+| checkout_notes          | text         | YES      | -                 | 체크아웃 메모              |
+| reservation_createdat   | timestamp    | NO       | CURRENT_TIMESTAMP | 생성 일시                  |
+| reservation_updatedat   | timestamp    | NO       | CURRENT_TIMESTAMP | 수정 일시                  |
 
-**예약 상태 (reservation_status) Enum**:
+**예약 상태 (reservation_status)**:
 - `pending`: 대기중
 - `confirmed`: 확정
 - `in_progress`: 진행중
@@ -139,7 +121,10 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 - PRIMARY KEY: `reservation_id`
 - FOREIGN KEY: `room_id` → `room.room_id`
 - FOREIGN KEY: `user_id` → `users.user_id`
-- INDEX: `reservation_starttime`
+- INDEX: `(room_id, user_id)` (복합 인덱스)
+- INDEX: `(reservation_starttime, reservation_endtime)` (복합 인덱스)
+- INDEX: `reservation_status`
+- INDEX: `reservation_createdat`
 
 **관계**:
 - ManyToOne: `room` (Room)
@@ -150,6 +135,31 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 - 예약 시작 시간 후 10분 이내 체크인시 `is_late = true`
 - 지각 3회 = 노쇼 1회 자동 전환
 - 체크아웃 시 사진 업로드 필수 (`checkout_photo_path`, `checkout_photo_url`)
+
+---
+
+## 4. user_sessions
+
+사용자 로그인 세션을 추적하는 테이블
+
+| Column           | Type        | Nullable | Default           | Description                |
+| ---------------- | ----------- | -------- | ----------------- | -------------------------- |
+| id               | integer     | NO       | AUTO_INCREMENT    | 세션 고유 ID (Primary Key) |
+| user_id          | integer     | NO       | -                 | 사용자 ID (Foreign Key)    |
+| login_at         | timestamp   | NO       | CURRENT_TIMESTAMP | 로그인 일시                |
+| logout_at        | timestamp   | YES      | -                 | 로그아웃 일시              |
+| duration_minutes | integer     | YES      | -                 | 세션 지속 시간 (분)        |
+| ip_address       | varchar(45) | YES      | -                 | 접속 IP 주소               |
+| user_agent       | text        | YES      | -                 | 브라우저/기기 정보         |
+| is_active        | boolean     | NO       | true              | 세션 활성 상태             |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- FOREIGN KEY: `user_id` → `users.user_id` (CASCADE DELETE)
+- INDEX: `login_at`
+
+**관계**:
+- ManyToOne: `user` (User)
 
 ---
 
@@ -169,17 +179,13 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 | createdAt   | timestamp | NO       | CURRENT_TIMESTAMP | 생성 일시                                 |
 
 **ActivityType Enum**:
-- `ROOM_CREATED`
-- `ROOM_UPDATED`
-- `ROOM_DELETED`
-- `USER_REGISTERED`
-- `RESERVATION_CREATED`
-- `RESERVATION_CANCELLED`
-- `BACKUP_CREATED`
-- `BACKUP_RESTORED`
-- `SETTINGS_UPDATED`
-- `SYSTEM_MAINTENANCE`
-- `EXCEL_UPLOAD`
+- `room_created`, `room_updated`, `room_deleted`
+- `user_registered`
+- `reservation_created`, `reservation_cancelled`
+- `backup_created`, `backup_restored`
+- `settings_updated`, `system_maintenance`
+- `excel_upload`
+- `club_approved`, `club_rejected`, `club_created`, `club_updated`, `club_deleted`
 
 **로그 레벨 (level) Enum**:
 - `info`: 정보성 로그
@@ -190,7 +196,6 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 **인덱스**:
 - PRIMARY KEY: `id`
 - FOREIGN KEY: `userId` → `users.user_id` (nullable)
-- INDEX: `createdAt`
 
 **관계**:
 - ManyToOne: `user` (User, nullable)
@@ -235,40 +240,39 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
 │ user_role       │  │
 │ ...             │  │
 └─────────────────┘  │
-                     │ 1:N
-                     │
-                     │
+        │            │ 1:N
+        │ 1:N        │
+        ▼            │
 ┌─────────────────┐  │    ┌─────────────────┐
-│ reservation     │  │    │ room            │
+│ user_sessions   │  │    │ room            │
 │─────────────────│  │    │─────────────────│
-│ reservation_id  │──┼───<│ room_id (PK)    │
-│ room_id (FK)    │──┘    │ room_name       │
-│ user_id (FK)    │       │ room_capacity   │
-│ title           │       │ ...             │
-│ status          │       └─────────────────┘
-│ ...             │                │
-└─────────────────┘                │ 1:N
-        │                          │
-        │ M:1                      │
-        │                          │
-        └──────────────────────────┘
+│ id (PK)         │  │    │ room_id (PK)    │
+│ user_id (FK)    │  │    │ room_name       │
+│ login_at        │  │    │ room_capacity   │
+│ logout_at       │  │    │ ...             │
+│ ip_address      │  │    └─────────────────┘
+│ ...             │  │            │
+└─────────────────┘  │            │ 1:N
+                     │            │
+                     ▼            ▼
+               ┌─────────────────────┐
+               │ reservation         │
+               │─────────────────────│
+               │ reservation_id (PK) │
+               │ room_id (FK)  ──────│──> room
+               │ user_id (FK)  ──────│──> users
+               │ title               │
+               │ status              │
+               │ ...                 │
+               └─────────────────────┘
 
-┌───────────────────┐         ┌─────────────────┐
-│ slack_verifications│        │ activity_logs   │
-│───────────────────│         │─────────────────│
-│ id (PK)           │         │ id (PK)         │
-│ intra_id          │         │ type            │
-│ verification_code │         │ userId (FK)     │──> users
-│ is_verified       │         │ ...             │
-│ ...               │         └─────────────────┘
-└───────────────────┘
-
-┌─────────────────┐
-│ system_settings │
-│─────────────────│
-│ id (PK)         │
-│ key (UNIQUE)    │
-│ value (JSON)    │
+┌─────────────────┐         ┌─────────────────┐
+│ activity_logs   │         │ system_settings │
+│─────────────────│         │─────────────────│
+│ id (PK)         │         │ id (PK)         │
+│ type            │         │ key (UNIQUE)    │
+│ userId (FK) ────│──> users│ value (JSONB)   │
+│ ...             │         └─────────────────┘
 └─────────────────┘
 ```
 
@@ -292,7 +296,7 @@ Slack 인증 코드를 관리하는 테이블 (회원가입 시 사용)
    - `users.ban_until = NOW() + 7 days`
 
 4. **노쇼 3회**
-   - 관리자 면담 필요 (별도 처리 필요)
+   - 영구 금지 (`ban_until = null`), 관리자 면담 필요
 
 ### 예약 상태 전환
 
@@ -320,15 +324,12 @@ TypeORM의 `synchronize: true` 설정으로 자동 동기화됩니다.
 
 ```typescript
 // backend/src/app.module.ts
-TypeOrmModule.forRootAsync({
-  // ...
-  synchronize: true, // 개발 환경에서만 사용
-})
+synchronize: configService.get('NODE_ENV') !== 'production',
 ```
 
 ### 프로덕션 환경
 
-마이그레이션 파일을 생성하여 수동으로 적용해야 합니다.
+`synchronize: false`로 설정되며, 마이그레이션 파일을 생성하여 수동으로 적용해야 합니다.
 
 ```bash
 # 마이그레이션 생성
@@ -352,7 +353,7 @@ npm run typeorm:migration:revert
 POST /admin/backup/create
 
 # 직접 백업 (PostgreSQL)
-pg_dump -h localhost -p 6113 -U postgres ggs_helper > backup_$(date +%Y%m%d_%H%M%S).sql
+pg_dump -h localhost -p 5432 -U postgres ggs_helper > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ### 백업 복원
@@ -365,7 +366,7 @@ POST /admin/backup/restore
 }
 
 # 직접 복원 (PostgreSQL)
-psql -h localhost -p 6113 -U postgres ggs_helper < backup_20250131_123456.sql
+psql -h localhost -p 5432 -U postgres ggs_helper < backup_20250131_123456.sql
 ```
 
 ---
@@ -379,5 +380,5 @@ psql -h localhost -p 6113 -U postgres ggs_helper < backup_20250131_123456.sql
 
 ---
 
-**최종 수정일**: 2025-01-31
+**최종 수정일**: 2026-03-18
 **작성자**: GGS (42경산 개발 동아리)

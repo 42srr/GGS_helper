@@ -116,7 +116,7 @@ export function useUserStats() {
 
         if (data?.stats?.activeProjects && data.stats.activeProjects.length > 0) {
 
-          data.stats.activeProjects.forEach((project: any, index: number) => {
+          data.stats.activeProjects.forEach((_project: any, _index: number) => {
 
           });
         } else {

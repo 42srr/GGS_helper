@@ -10,13 +10,14 @@ interface RequestConfig extends RequestInit {
 }
 
 class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public data?: unknown
-  ) {
+  status: number;
+  data?: unknown;
+
+  constructor(status: number, message: string, data?: unknown) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
   }
 }
 
@@ -36,9 +37,9 @@ async function request<T>(
 ): Promise<T> {
   const { requiresAuth = true, headers = {}, ...rest } = config;
 
-  const requestHeaders: HeadersInit = {
+  const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...headers,
+    ...(headers as Record<string, string>),
   };
 
   // 인증이 필요한 경우 토큰 추가
@@ -141,7 +142,7 @@ export const api = {
     config?: RequestConfig
   ) => {
     const { requiresAuth = true, ...rest } = config || {};
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
     if (requiresAuth) {
       const token = getAuthToken();
