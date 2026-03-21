@@ -27,8 +27,8 @@ interface SystemSettings {
     reminderHours: number;
     adminNotifications: boolean;
     systemAlerts: boolean;
-    slackWebhookUrl: string;
-    slackEnabled: boolean;
+    discordWebhookUrl: string;
+    discordEnabled: boolean;
   };
 }
 
@@ -45,14 +45,14 @@ export function AdminSettingsPage() {
       reminderHours: 24,
       adminNotifications: true,
       systemAlerts: true,
-      slackWebhookUrl: '',
-      slackEnabled: false,
+      discordWebhookUrl: '',
+      discordEnabled: false,
     },
   });
 
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [testingSlack, setTestingSlack] = useState(false);
+  const [testingDiscord, setTestingDiscord] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -61,9 +61,7 @@ export function AdminSettingsPage() {
   const fetchSettings = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -88,8 +86,8 @@ export function AdminSettingsPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify(settings),
       });
 
@@ -122,34 +120,33 @@ export function AdminSettingsPage() {
     }));
   };
 
-  const handleTestSlackWebhook = async () => {
-    if (!settings.notifications.slackWebhookUrl) {
-      alert('Slack 웹훅 URL을 먼저 입력해주세요.');
+  const handleTestDiscordWebhook = async () => {
+    if (!settings.notifications.discordWebhookUrl) {
+      alert('Discord 웹훅 URL을 먼저 입력해주세요.');
       return;
     }
 
-    setTestingSlack(true);
+    setTestingDiscord(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/test-slack`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/test-discord`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify({ webhookUrl: settings.notifications.slackWebhookUrl }),
+        credentials: 'include',
+        body: JSON.stringify({ webhookUrl: settings.notifications.discordWebhookUrl }),
       });
 
       if (response.ok) {
-        alert('✅ Slack 테스트 메시지가 전송되었습니다.');
+        alert('✅ Discord 테스트 메시지가 전송되었습니다.');
       } else {
         const error = await response.json();
-        alert(`❌ Slack 메시지 전송 실패: ${error.message || '알 수 없는 오류'}`);
+        alert(`❌ Discord 메시지 전송 실패: ${error.message || '알 수 없는 오류'}`);
       }
     } catch (error) {
-
-      alert('Slack 웹훅 테스트 중 오류가 발생했습니다.');
+      alert('Discord 웹훅 테스트 중 오류가 발생했습니다.');
     } finally {
-      setTestingSlack(false);
+      setTestingDiscord(false);
     }
   };
 
@@ -283,7 +280,7 @@ export function AdminSettingsPage() {
                 알림 설정
               </CardTitle>
               <CardDescription>
-                시스템 알림 및 Slack 연동 설정을 관리합니다
+                시스템 알림 및 Discord 연동 설정을 관리합니다
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -333,45 +330,45 @@ export function AdminSettingsPage() {
                 )}
               </div>
 
-              {/* Slack 연동 설정 */}
+              {/* Discord 연동 설정 */}
               <div className="border-t pt-6 mt-6">
-                <h4 className="font-medium text-gray-900 mb-4">Slack 웹훅 연동</h4>
+                <h4 className="font-medium text-gray-900 mb-4">Discord 웹훅 연동</h4>
 
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="font-medium text-gray-700">Slack 알림 활성화</p>
-                    <p className="text-sm text-gray-500">예약 신청 시 Slack으로 알림</p>
+                    <p className="font-medium text-gray-700">Discord 알림 활성화</p>
+                    <p className="text-sm text-gray-500">예약 신청, 회원가입 신청 시 Discord로 알림</p>
                   </div>
                   {renderToggle(
-                    settings.notifications.slackEnabled,
-                    (value) => updateNotificationSetting('slackEnabled', value)
+                    settings.notifications.discordEnabled,
+                    (value) => updateNotificationSetting('discordEnabled', value)
                   )}
                 </div>
 
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Slack 웹훅 URL
+                      Discord 웹훅 URL
                     </label>
                     <Input
                       type="text"
-                      placeholder="https://hooks.slack.com/services/..."
-                      value={settings.notifications.slackWebhookUrl}
-                      onChange={(e) => updateNotificationSetting('slackWebhookUrl', e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      value={settings.notifications.discordWebhookUrl}
+                      onChange={(e) => updateNotificationSetting('discordWebhookUrl', e.target.value)}
                       className="w-full font-mono text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Slack Incoming Webhook URL을 입력하세요
+                      Discord 채널 설정 &gt; 연동 &gt; 웹후크에서 URL을 복사하세요
                     </p>
                   </div>
 
                   <Button
                     variant="outline"
-                    onClick={handleTestSlackWebhook}
-                    disabled={testingSlack || !settings.notifications.slackWebhookUrl}
+                    onClick={handleTestDiscordWebhook}
+                    disabled={testingDiscord || !settings.notifications.discordWebhookUrl}
                     className="w-full"
                   >
-                    {testingSlack ? (
+                    {testingDiscord ? (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                         테스트 중...
@@ -379,7 +376,7 @@ export function AdminSettingsPage() {
                     ) : (
                       <>
                         <Bell className="w-4 h-4 mr-2" />
-                        Slack 연동 테스트
+                        Discord 연동 테스트
                       </>
                     )}
                   </Button>

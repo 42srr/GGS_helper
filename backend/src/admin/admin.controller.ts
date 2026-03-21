@@ -123,18 +123,18 @@ export class AdminController {
     };
   }
 
-  @Post('settings/test-slack')
-  async testSlackWebhook(@Body() body: { webhookUrl: string }) {
+  @Post('settings/test-discord')
+  async testDiscordWebhook(@Body() body: { webhookUrl: string }) {
     try {
-      await this.adminService.testSlackWebhook(body.webhookUrl);
+      await this.adminService.testDiscordWebhook(body.webhookUrl);
       return {
-        message: 'Slack test message sent successfully',
+        message: 'Discord test message sent successfully',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       throw new HttpException(
         {
-          message: 'Failed to send Slack test message',
+          message: 'Failed to send Discord test message',
           error: error.message,
         },
         HttpStatus.BAD_REQUEST,

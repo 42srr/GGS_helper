@@ -12,6 +12,9 @@ import * as XLSX from 'xlsx';
 @Injectable()
 export class AdminService {
   private serverStartTime: Date = new Date();
+  private settingsCache: SystemSettingsType | null = null;
+  private settingsCacheExpiry: number = 0;
+  private readonly SETTINGS_CACHE_TTL = 60_000; // 60초
 
   constructor(
     @InjectDataSource()
@@ -350,14 +353,26 @@ SELECT 'Backup completed successfully' as status;
 
   // 설정 관리 메서드들
   async getSettings(): Promise<SystemSettingsType> {
+    // 캐시가 유효하면 DB 조회 없이 반환
+    if (this.settingsCache && Date.now() < this.settingsCacheExpiry) {
+      return this.settingsCache;
+    }
+
     try {
       // 저장된 설정 조회
       const settingsRecords = await this.settingsRepository.find();
       const settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 
+      // 기존 slack → discord 키 마이그레이션 매핑
+      const keyMigration: Record<string, string> = {
+        'notifications.slackEnabled': 'notifications.discordEnabled',
+        'notifications.slackWebhookUrl': 'notifications.discordWebhookUrl',
+      };
+
       // 저장된 설정으로 덮어쓰기
       settingsRecords.forEach((record) => {
-        const keys = record.key.split('.');
+        const mappedKey = keyMigration[record.key] || record.key;
+        const keys = mappedKey.split('.');
         let current = settings;
         for (let i = 0; i < keys.length - 1; i++) {
           if (!current[keys[i]]) current[keys[i]] = {};
@@ -365,6 +380,10 @@ SELECT 'Backup completed successfully' as status;
         }
         current[keys[keys.length - 1]] = record.value;
       });
+
+      // 캐시 갱신
+      this.settingsCache = settings;
+      this.settingsCacheExpiry = Date.now() + this.SETTINGS_CACHE_TTL;
 
       return settings;
     } catch (error) {
@@ -374,6 +393,10 @@ SELECT 'Backup completed successfully' as status;
   }
 
   async updateSettings(settings: any): Promise<void> {
+    // 설정 변경 시 캐시 무효화
+    this.settingsCache = null;
+    this.settingsCacheExpiry = 0;
+
     try {
       // 중첩된 객체를 플랫한 키-값 형태로 변환
       const flatSettings = this.flattenSettings(settings);
@@ -412,127 +435,106 @@ SELECT 'Backup completed successfully' as status;
     }
   }
 
-  async testSlackWebhook(webhookUrl: string): Promise<void> {
+  async testDiscordWebhook(webhookUrl: string): Promise<void> {
     try {
-      const testMessage = {
-        text: '🔔 *Slack 웹훅 테스트*',
-        blocks: [
+      const message = {
+        embeds: [
           {
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: '🔔 Slack 웹훅 연동 테스트',
-              emoji: true,
+            title: '🔔 Discord 웹훅 연동 테스트',
+            description: 'Discord 웹훅이 정상적으로 연동되었습니다!\n회의실 예약 신청 및 회원가입 신청 시 알림을 받을 수 있습니다.',
+            color: 0x5865f2,
+            footer: {
+              text: `테스트 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
             },
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: 'Slack 웹훅이 정상적으로 연동되었습니다!\n회의실 예약 신청 시 알림을 받을 수 있습니다.',
-            },
-          },
-          {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: `테스트 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-              },
-            ],
           },
         ],
       };
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testMessage),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message),
       });
 
       if (!response.ok) {
-        throw new Error(`Slack API returned ${response.status}: ${response.statusText}`);
+        throw new Error(`Discord API returned ${response.status}: ${response.statusText}`);
       }
-
     } catch (error) {
-
-      throw new Error(`Slack 웹훅 테스트 실패: ${error.message}`);
+      throw new Error(`Discord 웹훅 테스트 실패: ${error.message}`);
     }
   }
 
-  async sendSlackNotification(
+  async sendDiscordReservationNotification(
     webhookUrl: string,
     reservation: any,
   ): Promise<void> {
     try {
       const message = {
-        text: '📅 새로운 회의실 예약 신청',
-        blocks: [
+        embeds: [
           {
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: '📅 새로운 회의실 예약 신청',
-              emoji: true,
-            },
-          },
-          {
-            type: 'section',
+            title: '📅 새로운 회의실 예약 신청',
+            color: 0x00b894,
             fields: [
-              {
-                type: 'mrkdwn',
-                text: `*예약자:*\n${reservation.userName || reservation.username}`,
-              },
-              {
-                type: 'mrkdwn',
-                text: `*회의실:*\n${reservation.roomName}`,
-              },
-              {
-                type: 'mrkdwn',
-                text: `*시작 시간:*\n${new Date(reservation.startTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-              },
-              {
-                type: 'mrkdwn',
-                text: `*종료 시간:*\n${new Date(reservation.endTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-              },
+              { name: '예약자', value: reservation.userName || reservation.username, inline: true },
+              { name: '회의실', value: reservation.roomName, inline: true },
+              { name: '시작 시간', value: new Date(reservation.startTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+              { name: '종료 시간', value: new Date(reservation.endTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+              { name: '목적', value: reservation.purpose || '미입력', inline: false },
             ],
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*목적:*\n${reservation.purpose || '미입력'}`,
+            footer: {
+              text: `신청 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
             },
-          },
-          {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: `신청 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-              },
-            ],
           },
         ],
       };
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(message),
       });
 
       if (!response.ok) {
-        throw new Error(`Slack API returned ${response.status}`);
+        throw new Error(`Discord API returned ${response.status}`);
       }
-
     } catch (error) {
+      // Discord 알림 실패는 예약 생성을 막지 않음
+    }
+  }
 
-      // Slack 알림 실패는 예약 생성을 막지 않음
+  async sendDiscordRegistrationNotification(
+    webhookUrl: string,
+    userData: { name: string; intraId: string },
+  ): Promise<void> {
+    try {
+      const message = {
+        embeds: [
+          {
+            title: '👤 새로운 회원가입 신청',
+            description: '관리자 승인이 필요한 새로운 회원가입 요청이 있습니다.',
+            color: 0x0984e3,
+            fields: [
+              { name: '이름', value: userData.name, inline: true },
+              { name: '인트라 ID', value: userData.intraId, inline: true },
+            ],
+            footer: {
+              text: `신청 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+            },
+          },
+        ],
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Discord API returned ${response.status}`);
+      }
+    } catch (error) {
+      // Discord 알림 실패는 회원가입을 막지 않음
     }
   }
 
