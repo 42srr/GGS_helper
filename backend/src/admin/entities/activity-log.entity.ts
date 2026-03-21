@@ -25,6 +25,7 @@ export enum ActivityType {
   CLUB_CREATED = 'club_created',
   CLUB_UPDATED = 'club_updated',
   CLUB_DELETED = 'club_deleted',
+  LOGIN_FAILED = 'login_failed',
 }
 
 @Entity('activity_logs')
