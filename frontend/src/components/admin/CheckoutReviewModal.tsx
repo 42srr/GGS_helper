@@ -53,9 +53,7 @@ export const CheckoutReviewModal: React.FC<CheckoutReviewModalProps> = ({
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/checkout-photo`,
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         }
       );
 

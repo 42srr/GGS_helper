@@ -85,9 +85,7 @@ export function AdminReservationsPage() {
     try {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -169,8 +167,8 @@ export function AdminReservationsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus }),
       });
 
@@ -190,9 +188,7 @@ export function AdminReservationsPage() {
   const exportToExcel = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/export`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {

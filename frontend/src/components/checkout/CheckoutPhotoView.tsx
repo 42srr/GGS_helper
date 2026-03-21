@@ -28,9 +28,7 @@ export function CheckoutPhotoView({ reservationId }: CheckoutPhotoViewProps) {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/checkout-photo`,
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         }
       );
 

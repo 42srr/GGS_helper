@@ -60,12 +60,10 @@ export function AdminPage() {
 
   const fetchSystemStats = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/system/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -85,12 +83,10 @@ export function AdminPage() {
 
   const fetchStatistics = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics?period=30d`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -108,12 +104,10 @@ export function AdminPage() {
 
   const fetchRecentActivities = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/activities/recent?limit=5`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -130,11 +124,12 @@ export function AdminPage() {
 
   const createSampleActivities = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/activities/create-samples`, {
+        credentials: 'include',
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          
           'Content-Type': 'application/json'
         }
       });
@@ -155,9 +150,10 @@ export function AdminPage() {
       switch (action) {
         case 'backup':
           const backupResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/create`, {
+        credentials: 'include',
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              
               'Content-Type': 'application/json'
             }
           });
@@ -167,9 +163,10 @@ export function AdminPage() {
           break;
         case 'clear-logs':
           const logsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/system/clear-logs`, {
+        credentials: 'include',
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              
               'Content-Type': 'application/json'
             }
           });
@@ -179,9 +176,7 @@ export function AdminPage() {
           break;
         case 'export-stats':
           const exportResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-            }
+            credentials: 'include',
           });
           if (exportResponse.ok) {
             const blob = await exportResponse.blob();

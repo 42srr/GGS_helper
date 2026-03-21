@@ -49,54 +49,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading: true,
   });
 
-  // 로컬 스토리지에서 토큰 확인
+  // 쿠키 기반 인증 확인
   useEffect(() => {
     const checkAuth = async () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          credentials: 'include',
+        });
 
-      if (accessToken) {
-        try {
-          // 현재 사용자 정보 가져오기
-          const response = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+        if (response.ok) {
+          const user: User = await response.json();
+          setAuthState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
           });
-
-          if (response.ok) {
-            const user: User = await response.json();
-
-            setAuthState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          } else if (response.status === 401 && refreshToken) {
-
-            // 토큰 갱신 시도
-            await handleRefreshToken();
-          } else {
-
-            // 토큰이 유효하지 않음
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
+        } else if (response.status === 401) {
+          // 토큰 갱신 시도
+          const refreshed = await handleRefreshToken();
+          if (!refreshed) {
             setAuthState({
               user: null,
               isAuthenticated: false,
               isLoading: false,
             });
           }
-        } catch (error) {
-
+        } else {
           setAuthState({
             user: null,
             isAuthenticated: false,
             isLoading: false,
           });
         }
-      } else {
-
+      } catch (error) {
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -108,36 +93,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth();
   }, []);
 
-  const handleRefreshToken = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    const userId = localStorage.getItem('userId');
-
-    if (!refreshToken || !userId) {
-      logout();
-      return;
-    }
-
+  const handleRefreshToken = async (): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: parseInt(userId),
-          refreshToken,
-        }),
+        credentials: 'include',
       });
 
       if (response.ok) {
-        const { access_token } = await response.json();
-        localStorage.setItem('accessToken', access_token);
-
-        // 사용자 정보 다시 가져오기
+        // 갱신 성공 → 사용자 정보 다시 가져오기
         const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
+          credentials: 'include',
         });
 
         if (userResponse.ok) {
@@ -147,51 +113,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isAuthenticated: true,
             isLoading: false,
           });
+          return true;
         }
-      } else {
-        logout();
       }
+      return false;
     } catch (error) {
-
-      logout();
+      return false;
     }
   };
 
   const login = async (intraId: string, password: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ intraId, password }),
-      });
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ intraId, password }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
-      }
-
-      const { access_token, user } = await response.json();
-
-      // 토큰과 사용자 정보 저장
-      localStorage.setItem('accessToken', access_token);
-      localStorage.setItem('userId', user.userId.toString());
-
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } catch (error) {
-
-      throw error;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed');
     }
+
+    const { user } = await response.json();
+
+    setAuthState({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+    });
   };
 
   const logout = async () => {
-    const accessToken = localStorage.getItem('accessToken');
-
     // 먼저 상태를 초기화
     setAuthState({
       user: null,
@@ -199,32 +154,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading: false,
     });
 
-    // 백엔드에 로그아웃 요청 (비동기로 처리, 실패해도 계속 진행)
-    if (accessToken) {
-      try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-      } catch (error) {
-
-      }
+    // 백엔드에 로그아웃 요청 (쿠키 삭제)
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      // 실패해도 계속 진행
     }
 
-    // 인증 관련 항목만 명시적으로 삭제
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
-    sessionStorage.clear();
-
-    // 페이지 새로고침 대신 navigate 사용하도록 수정 필요
-    // 하지만 이 컴포넌트에서는 navigate를 사용할 수 없으므로
-    // window.location을 사용하되, 약간의 딜레이를 줘서 storage가 반영되도록 함
     setTimeout(() => {
-
       window.location.href = '/login';
     }, 100);
   };
@@ -247,51 +187,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const userRole = authState.user.role;
 
-    // Admin has all permissions
     if (userRole === Role.ADMIN) return true;
 
-    // Define role permissions based on backend role enum
     const rolePermissions: Record<Role, string[]> = {
       [Role.STUDENT]: [
-        'reservation:create',
-        'reservation:read',
-        'reservation:update',
-        'reservation:delete',
-        'club:read',
-        'club:join',
-        'room:read',
-        'stats:read',
+        'reservation:create', 'reservation:read', 'reservation:update', 'reservation:delete',
+        'club:read', 'club:join', 'room:read', 'stats:read',
       ],
       [Role.STAFF]: [
-        'reservation:*',
-        'club:read',
-        'club:create',
-        'club:join',
-        'room:*',
-        'stats:read',
-        'user:read',
+        'reservation:*', 'club:read', 'club:create', 'club:join',
+        'room:*', 'stats:read', 'user:read',
       ],
       [Role.CLUB_LEADER]: [
-        'reservation:*',
-        'club:read',
-        'club:create',
-        'club:update',
-        'club:member:*',
-        'room:*',
-        'stats:read',
-        'user:read',
+        'reservation:*', 'club:read', 'club:create', 'club:update', 'club:member:*',
+        'room:*', 'stats:read', 'user:read',
       ],
-      [Role.ADMIN]: ['*'], // Admin has all permissions
+      [Role.ADMIN]: ['*'],
     };
 
     const userPermissions = rolePermissions[userRole] || [];
-
-    // Check wildcard permissions
     const [resource] = permission.split(':');
     if (userPermissions.includes(`${resource}:*`) || userPermissions.includes('*')) {
       return true;
     }
-
     return userPermissions.includes(permission);
   };
 
@@ -327,5 +245,4 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
-// Export types for use in other components
 export type { User, AuthState, AuthContextType };

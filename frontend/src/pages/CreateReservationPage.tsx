@@ -59,9 +59,7 @@ export function CreateReservationPage() {
   const checkReservationStatus = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/reservation-status`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -89,8 +87,8 @@ export function CreateReservationPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           roomId: parseInt(formData.roomId),
           startDatetime: `${formData.date}T${formData.startTime}:00+09:00`,
@@ -133,9 +131,7 @@ export function CreateReservationPage() {
     try {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -206,8 +202,8 @@ export function CreateReservationPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify(reservationData),
       });
 
@@ -598,7 +594,7 @@ export function CreateReservationPage() {
                           <ChevronDown className="w-4 h-4 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-6" align="start">
+                      <PopoverContent className="w-auto p-0" align="start">
                         <CalendarComponent
                           mode="single"
                           selected={selectedDate}

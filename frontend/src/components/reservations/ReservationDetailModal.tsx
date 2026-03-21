@@ -84,6 +84,7 @@ export function ReservationDetailModal({
 
     try {
       const response = await fetch(`${API_BASE_URL}/reservations/${reservation.reservationId}/no-show`, {
+        credentials: 'include',
         method: 'POST',
       });
 

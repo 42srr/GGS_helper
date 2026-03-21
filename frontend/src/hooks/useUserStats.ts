@@ -99,7 +99,6 @@ export function useUserStats() {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
         method,
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json',
         },
       });
