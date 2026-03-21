@@ -10,6 +10,7 @@ import {
 import { Reservation } from '../../reservation/entities/reservation.entity';
 
 @Entity('users')
+@Index(['intraId'])
 @Index(['lastLoginAt'])
 @Index(['createdAt'])
 @Index(['role'])

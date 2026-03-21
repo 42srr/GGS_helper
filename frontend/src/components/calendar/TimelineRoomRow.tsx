@@ -64,33 +64,38 @@ export function TimelineRoomRow({
   return (
     <div className="flex border-b border-border hover:bg-muted/30 transition-colors">
       {/* 회의실 정보 */}
-      <div className="w-32 flex-shrink-0 border-r border-border p-3 bg-background">
-        <div className="flex items-start gap-2">
+      <div className="w-16 sm:w-32 flex-shrink-0 border-r border-border p-1.5 sm:p-3 bg-background">
+        <div className="flex items-start gap-1 sm:gap-2">
           {/* 색상 표시 */}
           <div
-            className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0"
+            className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-0.5 flex-shrink-0"
             style={{ backgroundColor: roomColor.base }}
           />
 
           <div className="flex-1 min-w-0">
             {/* 회의실 이름 */}
-            <div className="font-semibold text-sm truncate">
+            <div className="font-semibold text-[10px] sm:text-sm truncate">
               {room.name}
             </div>
 
             {/* 수용 인원 */}
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground mt-1">
               <Users className="w-3 h-3" />
               <span>{room.capacity}인</span>
             </div>
 
             {/* 위치 */}
             {room.location && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                 <MapPin className="w-3 h-3" />
                 <span className="truncate">{room.location}</span>
               </div>
             )}
+
+            {/* 모바일: 인원만 간략 표시 */}
+            <div className="sm:hidden text-[9px] text-muted-foreground mt-0.5">
+              {room.capacity}인
+            </div>
           </div>
         </div>
       </div>

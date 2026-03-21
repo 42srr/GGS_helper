@@ -59,10 +59,10 @@ export function TimelineWeekView({
     <Card className="w-full">
       <CardContent className="p-0">
         <div className="overflow-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse" style={{ minWidth: '500px' }}>
             <thead>
               <tr>
-                <th className="border border-border bg-muted/50 p-2 w-24 sticky left-0 z-10">
+                <th className="border border-border bg-gray-100 p-1 sm:p-2 w-12 sm:w-24 sticky left-0 z-10 text-xs sm:text-sm">
                   시간
                 </th>
                 {weekDays.map(day => {
@@ -71,19 +71,19 @@ export function TimelineWeekView({
                     <th
                       key={day.toISOString()}
                       className={cn(
-                        "border border-border p-2 min-w-[120px]",
+                        "border border-border p-1 sm:p-2",
                         isToday ? "bg-blue-50" : "bg-muted/50"
                       )}
                     >
                       <div className="text-center">
                         <div className={cn(
-                          "text-xs font-medium",
+                          "text-[10px] sm:text-xs font-medium",
                           isToday ? "text-blue-600" : "text-muted-foreground"
                         )}>
                           {format(day, 'E', { locale: ko })}
                         </div>
                         <div className={cn(
-                          "text-sm font-bold",
+                          "text-xs sm:text-sm font-bold",
                           isToday ? "text-blue-600" : ""
                         )}>
                           {format(day, 'M/d')}
@@ -97,7 +97,7 @@ export function TimelineWeekView({
             <tbody>
               {timeSlots.map(hour => (
                 <tr key={hour}>
-                  <td className="border border-border bg-muted/30 p-2 text-center font-medium text-sm sticky left-0 z-10">
+                  <td className="border border-border bg-gray-50 p-1 sm:p-2 text-center font-medium text-[10px] sm:text-sm sticky left-0 z-10">
                     {`${hour.toString().padStart(2, '0')}:00`}
                   </td>
                   {weekDays.map(day => {
@@ -108,12 +108,12 @@ export function TimelineWeekView({
                       <td
                         key={`${day.toISOString()}-${hour}`}
                         className={cn(
-                          "border border-border p-1 align-top",
+                          "border border-border p-0.5 sm:p-1 align-top",
                           isToday ? "bg-blue-50/30" : "bg-background"
                         )}
-                        style={{ minHeight: '60px' }}
+                        style={{ minHeight: '48px' }}
                       >
-                        <div className="space-y-1">
+                        <div className="space-y-0.5 sm:space-y-1">
                           {slotReservations.map(reservation => {
                             const roomColor = getRoomColor(reservation.roomId);
                             const room = rooms.find(r => r.roomId === reservation.roomId);
@@ -122,7 +122,7 @@ export function TimelineWeekView({
                               <div
                                 key={reservation.reservationId}
                                 className={cn(
-                                  "text-xs p-1.5 rounded cursor-pointer transition-all",
+                                  "text-[10px] sm:text-xs p-1 sm:p-1.5 rounded cursor-pointer transition-all",
                                   "hover:shadow-md hover:scale-[1.02]",
                                   roomColor.bg,
                                   roomColor.text
@@ -132,11 +132,11 @@ export function TimelineWeekView({
                                 <div className="font-semibold truncate">
                                   {reservation.title}
                                 </div>
-                                <div className="text-xs opacity-75 truncate">
+                                <div className="hidden sm:block text-xs opacity-75 truncate">
                                   {format(reservation.startTime, 'HH:mm')} - {format(reservation.endTime, 'HH:mm')}
                                 </div>
                                 {room && (
-                                  <div className="text-xs opacity-60 truncate">
+                                  <div className="hidden sm:block text-xs opacity-60 truncate">
                                     {room.name}
                                   </div>
                                 )}

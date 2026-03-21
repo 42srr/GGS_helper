@@ -55,6 +55,12 @@ export class RoomService {
 
   async findAll(): Promise<Room[]> {
     return await this.roomRepository.find({
+      order: { name: 'ASC' },
+    });
+  }
+
+  async findAvailable(): Promise<Room[]> {
+    return await this.roomRepository.find({
       where: { isAvailable: true },
       order: { name: 'ASC' },
     });
@@ -62,7 +68,7 @@ export class RoomService {
 
   async findOne(roomId: number): Promise<Room> {
     const room = await this.roomRepository.findOne({
-      where: { roomId, isAvailable: true },
+      where: { roomId },
       relations: ['reservations'],
     });
 
@@ -156,7 +162,7 @@ export class RoomService {
           capacity: parseInt(row['수용인원'] || row['capacity']) || 0,
           description: row['설명'] || row['description'] || '',
           equipment: row['장비'] || row['equipment'] || '',
-          isActive: row['활성화'] !== false && row['isActive'] !== false,
+          isAvailable: row['활성화'] !== false && row['isAvailable'] !== false,
           isConfirm: isConfirm,
         };
 
@@ -283,15 +289,18 @@ export class RoomService {
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
 
-  async searchRooms(query: string): Promise<Room[]> {
-    return await this.roomRepository
+  async searchRooms(query: string, includeInactive = false): Promise<Room[]> {
+    const qb = this.roomRepository
       .createQueryBuilder('room')
-      .where('room.room_isavailable = :isAvailable', { isAvailable: true })
-      .andWhere(
+      .where(
         '(room.room_name ILIKE :query OR room.room_location ILIKE :query OR room.room_description ILIKE :query)',
         { query: `%${query}%` },
-      )
-      .orderBy('room.room_name', 'ASC')
-      .getMany();
+      );
+
+    if (!includeInactive) {
+      qb.andWhere('room.room_isavailable = :isAvailable', { isAvailable: true });
+    }
+
+    return await qb.orderBy('room.room_name', 'ASC').getMany();
   }
 }

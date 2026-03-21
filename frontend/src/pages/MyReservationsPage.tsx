@@ -50,9 +50,7 @@ export function MyReservationsPage() {
     try {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/my`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -155,9 +153,7 @@ export function MyReservationsPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/check-in`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -180,9 +176,7 @@ export function MyReservationsPage() {
         `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/early-return`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         }
       );
 
@@ -205,9 +199,7 @@ export function MyReservationsPage() {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         });
 
         if (response.ok) {
@@ -246,19 +238,19 @@ export function MyReservationsPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* 헤더 */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
                 내 예약
               </h1>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600">
                 나의 회의실 예약 내역을 확인하고 관리하세요.
               </p>
             </div>
             <Link to="/create-reservation">
-              <Button className="flex items-center">
-                <Plus className="w-4 h-4 mr-2" />
-                새 예약
+              <Button className="flex items-center" size="sm">
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">새 예약</span>
               </Button>
             </Link>
           </div>
@@ -295,7 +287,108 @@ export function MyReservationsPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <>
+            {/* 모바일: 카드 리스트 */}
+            <div className="md:hidden space-y-3">
+              {reservations.map((reservation: Reservation) => {
+                const reservationPast = isPast(reservation.endTime);
+                const reservationToday = isToday(reservation.startTime);
+
+                return (
+                  <Card key={reservation.reservationId} className={reservationPast ? 'opacity-60' : ''}>
+                    <CardContent className="p-4">
+                      {/* 제목 + 상태 */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="font-semibold text-gray-900 truncate">{reservation.title}</span>
+                          {reservationToday && (
+                            <Badge variant="outline" className="border-blue-200 text-blue-600 text-xs flex-shrink-0">오늘</Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 ml-2 flex-shrink-0">
+                          {reservation.status === 'pending' && <Badge variant="outline" className="border-yellow-200 text-yellow-600 text-xs">대기중</Badge>}
+                          {reservation.status === 'confirmed' && <Badge variant="outline" className="border-green-200 text-green-600 text-xs">확정</Badge>}
+                          {reservation.status === 'finished' && <Badge variant="outline" className="border-gray-200 text-gray-600 text-xs">종료</Badge>}
+                          {reservation.status === 'cancelled' && <Badge variant="outline" className="border-red-200 text-red-600 text-xs">취소</Badge>}
+                          {reservation.isNoShow && <Badge variant="outline" className="border-red-200 text-red-600 text-xs">노쇼</Badge>}
+                          {reservation.isLate && <Badge variant="outline" className="border-orange-200 text-orange-600 text-xs">지각</Badge>}
+                        </div>
+                      </div>
+
+                      {/* 회의실 + 날짜/시간 */}
+                      <div className="space-y-1 text-sm text-gray-600 mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span>{reservation.room.name}</span>
+                          <span className="text-gray-400">·</span>
+                          <span className="text-gray-500">{reservation.room.location}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span>{formatDate(reservation.startTime)}</span>
+                        </div>
+                        <div className="pl-5 text-gray-500">
+                          {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
+                        </div>
+                      </div>
+
+                      {/* 액션 버튼들 */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => setSelectedReservation(reservation)}>
+                          <Eye className="w-4 h-4 mr-1" />
+                          상세
+                        </Button>
+
+                        {reservation.checkInAt ? (
+                          <Badge variant="outline" className="border-green-200 text-green-600 h-8 px-2 flex items-center">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            체크인 완료
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleCheckIn(reservation.reservationId)}
+                            disabled={!canCheckIn(reservation)}
+                            className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            체크인
+                          </Button>
+                        )}
+
+                        {canEarlyReturn(reservation) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEarlyReturnClick(reservation)}
+                            className="text-blue-600 border-blue-200"
+                          >
+                            <LogOut className="w-4 h-4 mr-1" />
+                            반납
+                          </Button>
+                        )}
+
+                        {canCancel(reservation) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCancelReservation(reservation.reservationId)}
+                            className="text-red-600 border-red-200"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            취소
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* 데스크탑: 테이블 */}
+            <Card className="hidden md:block">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -376,7 +469,6 @@ export function MyReservationsPage() {
                                   <Eye className="w-4 h-4" />
                                 </Button>
 
-                                {/* 체크인 버튼 또는 완료 뱃지 */}
                                 {reservation.checkInAt ? (
                                   <Badge variant="outline" className="border-green-200 text-green-600">
                                     <CheckCircle className="w-3 h-3 mr-1" />
@@ -395,7 +487,6 @@ export function MyReservationsPage() {
                                   </Button>
                                 )}
 
-                                {/* 조기 반납 버튼 */}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -406,7 +497,6 @@ export function MyReservationsPage() {
                                   <LogOut className="w-4 h-4" />
                                 </Button>
 
-                                {/* 예약 취소 버튼 */}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -426,6 +516,7 @@ export function MyReservationsPage() {
                 </div>
               </CardContent>
             </Card>
+            </>
           )}
         </div>
       </main>

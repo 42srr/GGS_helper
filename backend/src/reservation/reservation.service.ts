@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan, LessThan, IsNull } from 'typeorm';
+import { Repository, Between, MoreThan, LessThan, Not, IsNull } from 'typeorm';
 import { Reservation } from './entities/reservation.entity';
 import { Room } from '../room/entities/room.entity';
 import { User } from '../user/entities/user.entity';
@@ -123,10 +123,9 @@ export class ReservationService {
     });
 
     if (expiredReservations.length > 0) {
-
-      for (const reservation of expiredReservations) {
-        await this.markAsNoShow(reservation);
-      }
+      await Promise.all(
+        expiredReservations.map((reservation) => this.markAsNoShow(reservation)),
+      );
     }
   }
 
@@ -238,15 +237,15 @@ export class ReservationService {
 
     const savedReservation = await this.reservationRepository.save(reservation);
 
-    // Slack 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
-    this.sendSlackNotificationIfEnabled(savedReservation, user, room).catch((err) => {
-      this.logger.warn(`Slack notification failed for reservation ${savedReservation.reservationId}: ${err.message}`);
+    // Discord 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
+    this.sendDiscordNotificationIfEnabled(savedReservation, user, room).catch((err) => {
+      this.logger.warn(`Discord notification failed for reservation ${savedReservation.reservationId}: ${err.message}`);
     });
 
     return savedReservation;
   }
 
-  private async sendSlackNotificationIfEnabled(
+  private async sendDiscordNotificationIfEnabled(
     reservation: Reservation,
     user: User,
     room: Room,
@@ -255,11 +254,11 @@ export class ReservationService {
       const settings = await this.adminService.getSettings();
 
       if (
-        settings.notifications?.slackEnabled &&
-        settings.notifications?.slackWebhookUrl
+        settings.notifications?.discordEnabled &&
+        settings.notifications?.discordWebhookUrl
       ) {
-        await this.adminService.sendSlackNotification(
-          settings.notifications.slackWebhookUrl,
+        await this.adminService.sendDiscordReservationNotification(
+          settings.notifications.discordWebhookUrl,
           {
             userName: user.intraId,
             username: user.intraId,
@@ -271,7 +270,7 @@ export class ReservationService {
         );
       }
     } catch (error) {
-      this.logger.warn(`Failed to send Slack notification: ${error.message}`);
+      this.logger.warn(`Failed to send Discord notification: ${error.message}`);
       // 알림 실패는 예약 생성을 막지 않음
     }
   }
@@ -339,6 +338,7 @@ export class ReservationService {
 
   async findAll(): Promise<Reservation[]> {
     return await this.reservationRepository.find({
+      where: { status: Not('cancelled' as const) },
       relations: ['room', 'user'],
       order: { startTime: 'ASC' },
     });

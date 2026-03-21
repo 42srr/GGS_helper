@@ -18,43 +18,35 @@ export function Header() {
     <header className="border-b border-line bg-primary">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/reservations" className="flex items-center space-x-2">
-          <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
+          <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" width={32} height={32} loading="eager" />
           <span className="text-xl font-bold text-white">룸잇</span>
         </Link>
 
+        {/* 데스크탑 네비게이션 */}
         <nav className="hidden md:flex items-center space-x-6">
-          {/* 예약 드롭다운 메뉴 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className={`flex items-center space-x-1 transition-colors hover:text-accent ${
-              location.pathname.startsWith('/reservations') || location.pathname === '/create-reservation' || location.pathname === '/my-reservations'
+          <Link
+            to="/reservations"
+            className={`flex items-center space-x-1 transition-colors ${
+              location.pathname === '/reservations'
                 ? 'text-accent font-medium'
-                : 'text-white'
-            }`}>
-              <Calendar className="w-4 h-4" />
-              <span>예약</span>
-              <ChevronDown className="w-3 h-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 py-2">
-              <DropdownMenuItem asChild className="my-1">
-                <Link to="/reservations" className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  예약 현황
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="my-1">
-                <Link to="/create-reservation" className="flex items-center">
-                  <Plus className="w-4 h-4 mr-2" />
-                  새 예약
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="my-1">
-                <Link to="/my-reservations" className="flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  내 예약
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                : 'text-white hover:text-accent'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>예약현황</span>
+          </Link>
+
+          <Link
+            to="/my-reservations"
+            className={`flex items-center space-x-1 transition-colors ${
+              location.pathname === '/my-reservations'
+                ? 'text-accent font-medium'
+                : 'text-white hover:text-accent'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>내 예약</span>
+          </Link>
 
           {/* 관리자 메뉴 - 관리자에게만 표시 */}
           {isAuthenticated && isAdmin() && (
@@ -101,6 +93,24 @@ export function Header() {
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+
+                  {/* 모바일에서만 표시되는 네비게이션 링크 */}
+                  <div className="md:hidden">
+                    <DropdownMenuItem asChild>
+                      <Link to="/reservations" className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        예약현황
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/my-reservations" className="flex items-center">
+                        <Clock className="w-4 h-4 mr-2" />
+                        내 예약
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </div>
+
                   <DropdownMenuItem asChild>
                     <Link to="/change-password" className="flex items-center">
                       <KeyRound className="w-4 h-4 mr-2" />
@@ -109,7 +119,7 @@ export function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {isAdmin() && (
-                    <>
+                    <div className="md:hidden">
                       <DropdownMenuItem asChild>
                         <Link to="/admin" className="flex items-center">
                           <Shield className="w-4 h-4 mr-2" />
@@ -117,7 +127,7 @@ export function Header() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                    </>
+                    </div>
                   )}
                   <DropdownMenuItem onClick={logout} className="flex items-center">
                     <LogOut className="w-4 h-4 mr-2" />

@@ -31,7 +31,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     // 토큰 블랙리스트 확인
     const request = context.switchToHttp().getRequest();
-    const token = request.headers.authorization?.replace('Bearer ', '');
+    const token = request.cookies?.accessToken || request.headers.authorization?.replace('Bearer ', '');
 
     if (token) {
       const isBlacklisted = await this.tokenBlacklistService.isBlacklisted(token);

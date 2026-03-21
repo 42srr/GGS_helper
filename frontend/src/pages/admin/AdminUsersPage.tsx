@@ -66,9 +66,7 @@ export function AdminUsersPage() {
     try {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -126,8 +124,8 @@ export function AdminUsersPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ isAvailable: !currentStatus }),
       });
 
@@ -149,8 +147,8 @@ export function AdminUsersPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ role: newRole }),
       });
 
@@ -169,9 +167,7 @@ export function AdminUsersPage() {
   const exportToExcel = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/export`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -476,9 +472,9 @@ export function AdminUsersPage() {
                                         method: 'PATCH',
                                         headers: {
                                           'Content-Type': 'application/json',
-                                          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
                                         },
-                                        body: JSON.stringify({
+        credentials: 'include',
+        body: JSON.stringify({
                                           isReservationBanned: false,
                                           banUntil: null
                                         }),

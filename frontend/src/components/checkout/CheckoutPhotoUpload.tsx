@@ -62,10 +62,8 @@ export function CheckoutPhotoUpload({
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/checkout-photo`,
         {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+        method: 'POST',
+          credentials: 'include',
           body: formData,
         }
       );

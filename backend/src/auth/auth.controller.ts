@@ -3,13 +3,14 @@ import {
   Get,
   UseGuards,
   Req,
+  Res,
   Post,
   Patch,
   Body,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -18,47 +19,62 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
+import { ConfigService } from '@nestjs/config';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: false, // 프로덕션에서는 true로 변경 (HTTPS 필수)
+  sameSite: 'lax' as const,
+  path: '/',
+};
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
+    private configService: ConfigService,
   ) {}
+
+  private getCookieOptions() {
+    const isProduction = this.configService.get('NODE_ENV') === 'production';
+    return {
+      ...COOKIE_OPTIONS,
+      secure: isProduction,
+    };
+  }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '로그아웃', description: '현재 JWT 토큰을 블랙리스트에 추가하여 무효화합니다.' })
+  @ApiOperation({ summary: '로그아웃' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
-  @ApiResponse({ status: 401, description: '인증 실패' })
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: AuthenticatedRequest) {
-    const token = req.headers.authorization?.replace('Bearer ', '') || '';
+  async logout(@Req() req: AuthenticatedRequest, @Res({ passthrough: true }) res: Response) {
+    const token = req.cookies?.accessToken || req.headers.authorization?.replace('Bearer ', '') || '';
     await this.authService.logout(req.user.userId, token);
+
+    const options = this.getCookieOptions();
+    res.clearCookie('accessToken', options);
+    res.clearCookie('refreshToken', options);
+
     return { message: 'Logged out successfully' };
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '현재 사용자 정보 조회', description: 'JWT 토큰으로 현재 로그인한 사용자 정보를 조회합니다.' })
+  @ApiOperation({ summary: '현재 사용자 정보 조회' })
   @ApiResponse({ status: 200, description: '사용자 정보 조회 성공' })
-  @ApiResponse({ status: 401, description: '인증 실패' })
   async getProfile(@Req() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @Post('register')
-  @ApiOperation({
-    summary: '회원가입',
-    description: '이름, 인트라 ID, 비밀번호로 회원가입을 진행합니다.'
-  })
+  @ApiOperation({ summary: '회원가입' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({ status: 201, description: '회원가입 성공' })
-  @ApiResponse({ status: 400, description: '유효성 검증 실패' })
   @ApiResponse({ status: 409, description: '이미 사용 중인 인트라 ID' })
-  @ApiResponse({ status: 429, description: 'Rate Limit 초과 (1시간에 3번)' })
   @HttpCode(HttpStatus.CREATED)
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   async register(@Body() registerDto: RegisterDto) {
@@ -68,14 +84,9 @@ export class AuthController {
   @Patch('change-password')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({
-    summary: '비밀번호 변경',
-    description: '현재 비밀번호를 확인한 후 새 비밀번호로 변경합니다.'
-  })
+  @ApiOperation({ summary: '비밀번호 변경' })
   @ApiBody({ type: ChangePasswordDto })
   @ApiResponse({ status: 200, description: '비밀번호 변경 성공' })
-  @ApiResponse({ status: 400, description: '현재 비밀번호 불일치 또는 유효성 검증 실패' })
-  @ApiResponse({ status: 401, description: '인증 실패' })
   @HttpCode(HttpStatus.OK)
   async changePassword(
     @Req() req: AuthenticatedRequest,
@@ -85,20 +96,60 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({
-    summary: '로그인',
-    description: '인트라 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.'
-  })
+  @ApiOperation({ summary: '로그인' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: '로그인 성공' })
-  @ApiResponse({ status: 401, description: '인트라 ID 또는 비밀번호가 올바르지 않음' })
-  @ApiResponse({ status: 429, description: 'Rate Limit 초과 (60초에 5번)' })
+  @ApiResponse({ status: 401, description: '인증 실패' })
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const forwardedFor = req.headers['x-forwarded-for'];
     const ipAddress = req.ip || (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor) || req.socket?.remoteAddress;
     const userAgent = req.headers['user-agent'];
-    return await this.authService.login(loginDto, ipAddress, userAgent);
+
+    const result = await this.authService.login(loginDto, ipAddress, userAgent);
+    const options = this.getCookieOptions();
+
+    // httpOnly 쿠키로 토큰 설정
+    res.cookie('accessToken', result.access_token, {
+      ...options,
+      maxAge: 60 * 60 * 1000, // 1시간
+    });
+    res.cookie('refreshToken', result.refresh_token, {
+      ...options,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+
+    // 응답 body에는 사용자 정보만 반환 (토큰은 쿠키로)
+    return { user: result.user };
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: '토큰 갱신' })
+  @ApiResponse({ status: 200, description: '토큰 갱신 성공' })
+  @ApiResponse({ status: 401, description: '갱신 실패' })
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ message: '토큰이 없습니다' });
+    }
+
+    const result = await this.authService.refreshAccessToken(refreshToken);
+    const options = this.getCookieOptions();
+
+    res.cookie('accessToken', result.access_token, {
+      ...options,
+      maxAge: 60 * 60 * 1000,
+    });
+
+    return { message: 'Token refreshed' };
   }
 }

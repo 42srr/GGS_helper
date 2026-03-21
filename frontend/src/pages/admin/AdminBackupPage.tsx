@@ -63,9 +63,7 @@ export function AdminBackupPage() {
   const fetchBackups = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/list`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -82,9 +80,7 @@ export function AdminBackupPage() {
   const fetchBackupSchedule = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -126,8 +122,8 @@ export function AdminBackupPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify(scheduleForm),
       });
 
@@ -218,9 +214,7 @@ export function AdminBackupPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/create`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -250,9 +244,7 @@ export function AdminBackupPage() {
   const handleDownloadBackup = async (backupId: string, backupName: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/download/${backupId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -277,9 +269,7 @@ export function AdminBackupPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/${backupId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {

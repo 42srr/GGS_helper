@@ -21,6 +21,7 @@ export type ReservationStatus =
 
 @Entity('reservation')
 @Index(['roomId', 'userId'])
+@Index(['userId'])
 @Index(['startTime', 'endTime'])
 @Index(['status'])
 @Index(['createdAt'])

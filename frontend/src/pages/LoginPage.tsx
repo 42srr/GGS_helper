@@ -35,7 +35,7 @@ export function LoginPage() {
     try {
       await login(intraId, password);
     } catch (err: any) {
-      setError(err.response?.data?.message || '로그인에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +45,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface">
       <div className="max-w-md w-full space-y-8 px-4">
         <div className="text-center">
-          <img src="/logo.png" alt="룸잇" className="mx-auto w-16 h-16 rounded-xl mb-6" />
+          <img src="/logo.png" alt="룸잇" className="mx-auto w-16 h-16 rounded-xl mb-6" width={64} height={64} />
           <h2 className="text-3xl font-bold text-primary">
             룸잇
           </h2>

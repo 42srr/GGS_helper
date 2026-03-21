@@ -24,7 +24,7 @@ export class BackupSchedulerService {
       const backupId = await this.adminService.createBackup();
       this.logger.log(`✅ Scheduled backup completed: ${backupId}`);
 
-      // Slack 알림 전송
+      // Discord 알림 전송
       await this.sendBackupNotification(backupId, 'success');
 
       // 오래된 백업 정리
@@ -79,74 +79,37 @@ export class BackupSchedulerService {
     try {
       const settings = await this.adminService.getSettings();
 
-      if (!settings.notifications?.slackEnabled || !settings.notifications?.slackWebhookUrl) {
+      if (!settings.notifications?.discordEnabled || !settings.notifications?.discordWebhookUrl) {
         return;
       }
 
-      const message = status === 'success'
+      const embed = status === 'success'
         ? {
-            text: '✅ 자동 백업 완료',
-            blocks: [
-              {
-                type: 'header',
-                text: {
-                  type: 'plain_text',
-                  text: '✅ 데이터베이스 자동 백업 완료',
-                  emoji: true,
-                },
-              },
-              {
-                type: 'section',
-                fields: [
-                  {
-                    type: 'mrkdwn',
-                    text: `*백업 ID:*\n${backupId}`,
-                  },
-                  {
-                    type: 'mrkdwn',
-                    text: `*완료 시간:*\n${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-                  },
-                ],
-              },
+            title: '✅ 데이터베이스 자동 백업 완료',
+            color: 0x00b894,
+            fields: [
+              { name: '백업 ID', value: backupId || '-', inline: true },
+              { name: '완료 시간', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: true },
             ],
           }
         : {
-            text: '❌ 자동 백업 실패',
-            blocks: [
-              {
-                type: 'header',
-                text: {
-                  type: 'plain_text',
-                  text: '❌ 데이터베이스 자동 백업 실패',
-                  emoji: true,
-                },
-              },
-              {
-                type: 'section',
-                text: {
-                  type: 'mrkdwn',
-                  text: `*오류 메시지:*\n\`\`\`${errorMessage || '알 수 없는 오류'}\`\`\``,
-                },
-              },
-              {
-                type: 'context',
-                elements: [
-                  {
-                    type: 'mrkdwn',
-                    text: `실패 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
-                  },
-                ],
-              },
+            title: '❌ 데이터베이스 자동 백업 실패',
+            color: 0xd63031,
+            fields: [
+              { name: '오류 메시지', value: `\`\`\`${errorMessage || '알 수 없는 오류'}\`\`\``, inline: false },
             ],
+            footer: {
+              text: `실패 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+            },
           };
 
-      await fetch(settings.notifications.slackWebhookUrl, {
+      await fetch(settings.notifications.discordWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message),
+        body: JSON.stringify({ embeds: [embed] }),
       });
 
-      this.logger.log(`Backup notification sent to Slack: ${status}`);
+      this.logger.log(`Backup notification sent to Discord: ${status}`);
     } catch (error) {
       this.logger.error('Failed to send backup notification:', error);
     }

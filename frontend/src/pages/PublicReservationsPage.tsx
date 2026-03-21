@@ -69,7 +69,7 @@ export function PublicReservationsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
+              <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" width={32} height={32} />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-primary">룸잇</h1>
                 <p className="text-xs sm:text-sm text-secondary">회의실 예약 시스템</p>

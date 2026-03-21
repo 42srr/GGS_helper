@@ -6,6 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   MapPin,
   Users,
@@ -25,13 +34,25 @@ interface Room {
   capacity: number;
   description?: string;
   equipment?: string;
-  isActive: boolean;
+  isAvailable: boolean;
+  isConfirm?: boolean;
 }
 
 export function AdminRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    location: '',
+    capacity: '',
+    description: '',
+    equipment: '',
+    isAvailable: true,
+    isConfirm: true,
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   useEffect(() => {
     fetchRooms();
@@ -41,13 +62,11 @@ export function AdminRoomsPage() {
     try {
       setLoading(true);
       const url = search
-        ? `${import.meta.env.VITE_API_BASE_URL}/rooms?search=${encodeURIComponent(search)}`
-        : `${import.meta.env.VITE_API_BASE_URL}/rooms`;
+        ? `${import.meta.env.VITE_API_BASE_URL}/rooms?includeInactive=true&search=${encodeURIComponent(search)}`
+        : `${import.meta.env.VITE_API_BASE_URL}/rooms?includeInactive=true`;
 
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -72,9 +91,7 @@ export function AdminRoomsPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/${roomId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -92,9 +109,7 @@ export function AdminRoomsPage() {
   const downloadTemplate = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/template`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -116,9 +131,7 @@ export function AdminRoomsPage() {
   const exportRooms = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/export`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -163,9 +176,7 @@ export function AdminRoomsPage() {
 
       const healthCheck = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (!healthCheck.ok) {
@@ -184,9 +195,7 @@ export function AdminRoomsPage() {
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms/upload`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
         body: formData,
         signal: controller.signal,
       });
@@ -222,6 +231,60 @@ export function AdminRoomsPage() {
     }
 
     event.target.value = '';
+  };
+
+  const openEditModal = (room: Room) => {
+    setEditingRoom(room);
+    setEditFormData({
+      name: room.name,
+      location: room.location,
+      capacity: String(room.capacity),
+      description: room.description || '',
+      equipment: room.equipment || '',
+      isAvailable: room.isAvailable,
+      isConfirm: room.isConfirm ?? true,
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoom) return;
+
+    setEditSubmitting(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/rooms/${editingRoom.roomId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        credentials: 'include',
+        body: JSON.stringify({
+            name: editFormData.name,
+            location: editFormData.location,
+            capacity: parseInt(editFormData.capacity),
+            description: editFormData.description || undefined,
+            equipment: editFormData.equipment || undefined,
+            isAvailable: editFormData.isAvailable,
+            isConfirm: editFormData.isConfirm,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        alert('회의실 정보가 수정되었습니다.');
+        setEditingRoom(null);
+        fetchRooms();
+      } else {
+        const error = await response.json();
+        alert(`수정 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      }
+    } catch (error) {
+      alert('회의실 수정 중 오류가 발생했습니다.');
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -344,15 +407,15 @@ export function AdminRoomsPage() {
                         </span>
                       </td>
                       <td className="p-4">
-                        {room.isActive ? (
-                          <Badge variant="default">사용 가능</Badge>
+                        {room.isAvailable ? (
+                          <Badge className="bg-green-600 text-white hover:bg-green-700">사용 가능</Badge>
                         ) : (
-                          <Badge variant="secondary">사용 불가</Badge>
+                          <Badge className="bg-red-600 text-white hover:bg-red-700">사용 불가</Badge>
                         )}
                       </td>
                       <td className="p-4">
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => openEditModal(room)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
@@ -381,6 +444,113 @@ export function AdminRoomsPage() {
         </Card>
       </main>
       <Footer />
+
+      {/* 회의실 수정 모달 */}
+      <Dialog open={!!editingRoom} onOpenChange={(open) => !open && setEditingRoom(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>회의실 정보 수정</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">회의실명 *</Label>
+              <Input
+                id="edit-name"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-location">위치 *</Label>
+                <Input
+                  id="edit-location"
+                  value={editFormData.location}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-capacity">수용 인원 *</Label>
+                <Input
+                  id="edit-capacity"
+                  type="number"
+                  min="1"
+                  value={editFormData.capacity}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, capacity: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-description">설명</Label>
+              <Textarea
+                id="edit-description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-equipment">보유 장비</Label>
+              <Input
+                id="edit-equipment"
+                value={editFormData.equipment}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, equipment: e.target.value }))}
+                placeholder="예: 프로젝터, 화이트보드, 스피커"
+              />
+            </div>
+
+            <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="edit-isAvailable"
+                checked={editFormData.isAvailable}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <div className="flex-1">
+                <Label htmlFor="edit-isAvailable" className="text-sm font-medium cursor-pointer">
+                  회의실 활성화
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">비활성화하면 예약할 수 없습니다</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="edit-isConfirm"
+                checked={editFormData.isConfirm}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, isConfirm: e.target.checked }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <div className="flex-1">
+                <Label htmlFor="edit-isConfirm" className="text-sm font-medium cursor-pointer">
+                  관리자 승인 필요
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">체크하면 예약 시 관리자 승인이 필요합니다</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingRoom(null)}>
+                취소
+              </Button>
+              <Button
+                type="submit"
+                disabled={!editFormData.name || !editFormData.location || !editFormData.capacity || editSubmitting}
+              >
+                {editSubmitting ? '수정 중...' : '수정 완료'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

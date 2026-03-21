@@ -51,6 +51,7 @@ export function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           name: formData.name,
           intraId: formData.intraId,
@@ -72,8 +73,8 @@ export function RegisterPage() {
       }
 
       setSuccess(true);
-      toast.success('회원가입이 완료되었습니다');
-      setTimeout(() => navigate('/login'), 2000);
+      toast.success('회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.');
+      setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
       setError('회원가입에 실패했습니다.');
     } finally {
@@ -85,7 +86,7 @@ export function RegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg">
-          회원가입이 완료되었습니다. 로그인 페이지로 이동합니다...
+          회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.
         </div>
       </div>
     );
@@ -95,7 +96,7 @@ export function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img src="/logo.png" alt="룸잇" className="mx-auto w-16 h-16 rounded-xl mb-6" />
+          <img src="/logo.png" alt="룸잇" className="mx-auto w-16 h-16 rounded-xl mb-6" width={64} height={64} />
           <h2 className="text-3xl font-bold text-primary">회원가입</h2>
           <p className="mt-4 text-secondary">
             새 계정을 만들어 회의실 예약 서비스를 이용하세요.

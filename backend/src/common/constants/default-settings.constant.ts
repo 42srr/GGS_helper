@@ -13,8 +13,8 @@ export interface SystemSettings {
     reminderHours: number;
     adminNotifications: boolean;
     systemAlerts: boolean;
-    slackWebhookUrl: string;
-    slackEnabled: boolean;
+    discordWebhookUrl: string;
+    discordEnabled: boolean;
   };
   security: {
     sessionTimeout: number;
@@ -48,8 +48,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
     reminderHours: 24,
     adminNotifications: true,
     systemAlerts: true,
-    slackWebhookUrl: '',
-    slackEnabled: false,
+    discordWebhookUrl: '',
+    discordEnabled: false,
   },
   security: {
     sessionTimeout: 60,

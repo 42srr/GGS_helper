@@ -36,10 +36,10 @@ export function TimelineTimeScale({
   return (
     <div className="flex border-b border-border bg-background sticky top-0 z-20">
       {/* 회의실 이름 칼럼 */}
-      <div className="w-32 flex-shrink-0 border-r border-border" />
+      <div className="w-16 sm:w-32 flex-shrink-0 border-r border-border" />
 
       {/* 시간 축 */}
-      <div className="flex-1 relative h-12">
+      <div className="flex-1 relative h-10 sm:h-12">
         {timeLabels.map((item, index) => {
           const position = ((item.time.getHours() - startHour) / totalHours) * 100;
 
@@ -53,7 +53,7 @@ export function TimelineTimeScale({
               <div className="absolute top-0 w-px h-full bg-border" />
 
               {/* 시간 레이블 */}
-              <span className="ml-2 text-xs font-medium text-muted-foreground select-none">
+              <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs font-medium text-muted-foreground select-none">
                 {item.label}
               </span>
             </div>

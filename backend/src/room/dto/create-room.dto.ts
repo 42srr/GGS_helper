@@ -27,7 +27,7 @@ export class CreateRoomDto {
 
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  isAvailable?: boolean;
 
   @IsOptional()
   @IsBoolean()

@@ -61,9 +61,7 @@ export function AdminClubsPage() {
     try {
       setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/all`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -120,9 +118,7 @@ export function AdminClubsPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/approve`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -143,9 +139,7 @@ export function AdminClubsPage() {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/reject`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {

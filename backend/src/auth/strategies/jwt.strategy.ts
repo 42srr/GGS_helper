@@ -7,6 +7,15 @@ import { UserService } from '../../user/user.service';
 import { TokenBlacklistService } from '../token-blacklist.service';
 import { JwtPayload } from '../../common/interfaces/authenticated-request.interface';
 
+function extractTokenFromCookieOrHeader(req: Request): string | null {
+  // 1. 쿠키에서 추출
+  if (req.cookies?.accessToken) {
+    return req.cookies.accessToken;
+  }
+  // 2. Authorization 헤더에서 추출 (API 호환성)
+  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -15,16 +24,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private tokenBlacklistService: TokenBlacklistService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: extractTokenFromCookieOrHeader,
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET', { infer: true }) ?? (() => { throw new Error('JWT_SECRET environment variable is required'); })(),
-      passReqToCallback: true,  // request 객체 접근 활성화
+      passReqToCallback: true,
     });
   }
 
   async validate(request: Request, payload: JwtPayload) {
-    // Authorization 헤더에서 토큰 추출
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+    const token = extractTokenFromCookieOrHeader(request);
 
     // 블랙리스트 확인
     if (token) {

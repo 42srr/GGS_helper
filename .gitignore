@@ -109,6 +109,14 @@ backups/
 backup_*.sql
 *.backup
 
+# TypeScript build info
+*.tsbuildinfo
+
+# Backend scripts build output
+backend/scripts/*.js
+backend/scripts/*.js.map
+backend/scripts/*.d.ts
+
 # TypeORM
 backend/src/migrations/*.ts
 !backend/src/migrations/.gitkeep
