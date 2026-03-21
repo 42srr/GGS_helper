@@ -55,6 +55,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ADMIN_ID: ${ADMIN_ID:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       NODE_OPTIONS: "--max-old-space-size=256"
       TZ: Asia/Seoul
     ports:
