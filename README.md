@@ -21,6 +21,7 @@
 GGS Helper는 회의실 및 스터디룸을 효율적으로 관리하기 위한 웹 기반 예약 시스템입니다.
 
 **핵심 가치:**
+
 - 📅 실시간 예약 현황 확인
 - 🔒 안전한 인증 및 권한 관리
 - 📊 통계 및 분석 기능
@@ -29,12 +30,14 @@ GGS Helper는 회의실 및 스터디룸을 효율적으로 관리하기 위한 
 ## ✨ 주요 기능
 
 ### 사용자 기능
+
 - **실시간 예약 현황**: 달력 형식으로 예약 현황 확인
 - **회의실 예약**: 시간대별 예약 생성 및 충돌 자동 검증
 - **체크아웃 인증**: 사진 업로드를 통한 퇴실 인증
 - **예약 관리**: 내 예약 목록 조회 및 취소
 
 ### 관리자 기능
+
 - **예약 관리**: 전체 예약 조회, 승인, 취소
 - **회의실 관리**: 회의실 정보 수정, Excel 일괄 업로드
 - **사용자 관리**: 회원 정보 조회, 권한 관리
@@ -49,53 +52,10 @@ GGS Helper는 회의실 및 스터디룸을 효율적으로 관리하기 위한 
 - Docker & Docker Compose
 - PostgreSQL 16 (Docker 사용 시 불필요)
 
-### 설치 및 실행
-
-```bash
-# 1. 저장소 클론
-git clone <repository-url>
-cd GGS_helper
-
-# 2. 환경변수 설정
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-cp developments/.env.example developments/.env
-
-# 3. 데이터베이스 시작
-cd developments
-docker-compose up -d
-cd ..
-
-# 4. 의존성 설치
-cd backend && npm install
-cd ../frontend && npm install
-
-# 5. 개발 서버 실행
-# 터미널 1 - 백엔드
-cd backend
-npm run start:dev
-
-# 터미널 2 - 프론트엔드
-cd frontend
-npm run dev
-```
-
-### 접속 정보
-
-- **프론트엔드**: http://localhost:6111
-- **백엔드 API**: http://localhost:6112
-- **데이터베이스**: localhost:6113
-
-### 기본 관리자 계정
-
-```
-인트라 ID: admin
-비밀번호: Admin1234
-```
-
 ## 🛠 기술 스택
 
 ### Frontend
+
 - React 19 + TypeScript
 - Vite (빌드 도구)
 - React Router (라우팅)
@@ -104,6 +64,7 @@ npm run dev
 - Sonner (Toast 알림)
 
 ### Backend
+
 - NestJS (Node.js 프레임워크)
 - TypeORM (ORM)
 - JWT (인증/인가)
@@ -111,13 +72,16 @@ npm run dev
 - Throttler (Rate Limiting)
 
 ### Database
+
 - PostgreSQL 16
 
 ### DevOps
+
 - Docker Compose
 - Git
 
 ### 보안 기능
+
 - JWT 기반 인증 및 토큰 블랙리스트
 - Rate Limiting (IP 기반)
 - SQL Injection 방지 (TypeORM)
@@ -137,11 +101,14 @@ npm run dev
 ## 👥 개발자
 
 ### Frontend
+
 - yutsong
 - kjung
 
 ### Backend
+
 - yutsong
+- mujang
 
 ## 📄 라이선스
 
