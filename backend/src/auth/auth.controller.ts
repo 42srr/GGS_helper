@@ -37,10 +37,10 @@ export class AuthController {
   ) {}
 
   private getCookieOptions() {
-    const isProduction = this.configService.get('NODE_ENV') === 'production';
+    const useSecure = this.configService.get('COOKIE_SECURE', 'false') === 'true';
     return {
       ...COOKIE_OPTIONS,
-      secure: isProduction,
+      secure: useSecure,
     };
   }
 
