@@ -19,7 +19,7 @@ interface Room {
   capacity: number;
   description?: string;
   equipment?: string;
-  isActive: boolean;
+  isAvailable: boolean;
 }
 
 export function RoomsPage() {
@@ -39,15 +39,13 @@ export function RoomsPage() {
         : `${import.meta.env.VITE_API_BASE_URL}/rooms`;
 
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
         // 활성화된 회의실만 표시
-        setRooms(data.filter((room: Room) => room.isActive));
+        setRooms(data.filter((room: Room) => room.isAvailable));
       }
     } catch (error) {
 

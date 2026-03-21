@@ -36,11 +36,17 @@ export class RoomController {
 
   @Get()
   @RequirePermissions('room:read')
-  findAll(@Query('search') search?: string) {
+  findAll(
+    @Query('search') search?: string,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
     if (search) {
-      return this.roomService.searchRooms(search);
+      return this.roomService.searchRooms(search, includeInactive === 'true');
     }
-    return this.roomService.findAll();
+    if (includeInactive === 'true') {
+      return this.roomService.findAll();
+    }
+    return this.roomService.findAvailable();
   }
 
   @Get('template')
