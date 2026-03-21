@@ -40,7 +40,7 @@ export function CreateRoomPage() {
         isConfirm: formData.isConfirm
       };
 
-      const response = await fetch('http://localhost:3001/rooms', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export function CreateRoomPage() {
         alert(`회의실 생성 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
       }
     } catch (error) {
-      console.error('Room creation error:', error);
+
       alert('회의실 생성 중 오류가 발생했습니다.');
     } finally {
       setSubmitting(false);

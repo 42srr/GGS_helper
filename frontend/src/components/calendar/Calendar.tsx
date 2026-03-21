@@ -9,20 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-
-interface Reservation {
-  reservationId: number;
-  roomId: number;
-  roomName?: string;
-  userId: number;
-  userName?: string;
-  title: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  status?: 'confirmed' | 'pending' | 'cancelled';
-  createdAt?: Date;
-}
+import type { Reservation } from '@/types/calendar';
 
 interface CalendarProps {
   reservations: Reservation[];
@@ -141,7 +128,7 @@ export function Calendar({ reservations, onEventClick }: CalendarProps) {
               </div>
               <div className="hidden sm:flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {reservation.roomName}
+                {reservation.room?.name}
               </div>
             </div>
           ))}
@@ -264,10 +251,10 @@ export function Calendar({ reservations, onEventClick }: CalendarProps) {
                     <Clock className="w-4 h-4" />
                     <span>{formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}</span>
                   </div>
-                  {reservation.roomName && (
+                  {reservation.room?.name && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
-                      <span>{reservation.roomName}</span>
+                      <span>{reservation.room?.name}</span>
                     </div>
                   )}
                 </div>

@@ -10,7 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown, RotateCcw } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ArrowLeft, ChevronDown, RotateCcw, AlertCircle } from 'lucide-react';
+import { AfterHoursNoticeDialog } from '@/components/reservations/AfterHoursNoticeDialog';
+import { isAfterHoursReservation } from '@/utils/businessHours';
+import { toast } from 'sonner';
 
 interface Room {
   roomId: number;
@@ -20,6 +23,7 @@ interface Room {
   equipment?: string;
   description?: string;
   isAvailable: boolean;
+  isConfirm: boolean;
 }
 
 export function CreateReservationPage() {
@@ -33,6 +37,9 @@ export function CreateReservationPage() {
   const [showRulesDialog, setShowRulesDialog] = useState(true);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banInfo, setBanInfo] = useState<{ banUntil: string | null }>({ banUntil: null });
+  const [showAfterHoursNotice, setShowAfterHoursNotice] = useState(false);
+  const [hasConflict, setHasConflict] = useState(false);
+  const [checkingConflict, setCheckingConflict] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -51,7 +58,7 @@ export function CreateReservationPage() {
 
   const checkReservationStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/users/reservation-status', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/reservation-status`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -65,9 +72,52 @@ export function CreateReservationPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to check reservation status:', error);
+
     }
   };
+
+  const checkTimeConflict = async () => {
+    // 필수 필드가 모두 입력되지 않았으면 체크하지 않음
+    if (!formData.roomId || !formData.date || !formData.startTime || !formData.endTime) {
+      setHasConflict(false);
+      return;
+    }
+
+    setCheckingConflict(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/check-conflict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          roomId: parseInt(formData.roomId),
+          startDatetime: `${formData.date}T${formData.startTime}:00+09:00`,
+          endDatetime: `${formData.date}T${formData.endTime}:00+09:00`,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHasConflict(data.hasConflict);
+        if (data.hasConflict) {
+          toast.error(data.message, {
+            description: '다른 시간대를 선택해주세요.',
+          });
+        }
+      }
+    } catch (error) {
+
+    } finally {
+      setCheckingConflict(false);
+    }
+  };
+
+  // 날짜/시간 변경 시 충돌 체크
+  useEffect(() => {
+    checkTimeConflict();
+  }, [formData.roomId, formData.date, formData.startTime, formData.endTime]);
 
   useEffect(() => {
     // URL 파라미터에서 roomId 확인 및 방 자동 선택
@@ -82,7 +132,7 @@ export function CreateReservationPage() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/rooms', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -93,7 +143,7 @@ export function CreateReservationPage() {
         setRooms(data.filter((room: Room) => room.isAvailable));
       }
     } catch (error) {
-      console.error('Failed to fetch rooms:', error);
+
     } finally {
       setLoading(false);
     }
@@ -107,6 +157,36 @@ export function CreateReservationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 기본 검증
+    if (!formData.title || !formData.roomId || !formData.date ||
+        !formData.startTime || !formData.endTime || !formData.attendees) {
+      toast.error('모든 필수 항목을 입력해주세요.');
+      return;
+    }
+
+    // 충돌 체크
+    if (hasConflict) {
+      toast.error('선택한 시간대에 이미 다른 예약이 있습니다.', {
+        description: '다른 시간대를 선택해주세요.',
+      });
+      return;
+    }
+
+    // 승인 필요 회의실 + 업무시간 외 체크
+    const selectedRoom = rooms.find(r => r.roomId === parseInt(formData.roomId));
+
+    if (selectedRoom?.isConfirm && isAfterHoursReservation()) {
+      // 승인이 필요한 회의실 + 업무시간 외 = 안내 모달 표시
+      setShowAfterHoursNotice(true);
+      return;
+    }
+
+    // 바로 제출
+    await submitReservation();
+  };
+
+  const submitReservation = async () => {
     setSubmitting(true);
 
     try {
@@ -122,9 +202,7 @@ export function CreateReservationPage() {
         attendees: formData.attendees ? parseInt(formData.attendees) : undefined
       };
 
-      console.log('Sending reservation data:', reservationData);
-
-      const response = await fetch('http://localhost:3001/reservations', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,19 +212,34 @@ export function CreateReservationPage() {
       });
 
       if (response.ok) {
-        alert('예약이 성공적으로 생성되었습니다!');
-        navigate('/my-reservations');
+        toast.success('예약이 성공적으로 생성되었습니다!', {
+          description: '내 예약 페이지로 이동합니다.',
+        });
+        setTimeout(() => navigate('/my-reservations'), 1000);
       } else {
         const error = await response.json();
-        console.error('Server error response:', error);
-        alert(`예약 생성 실패: ${error.message || JSON.stringify(error.errors || error)}`);
+
+        toast.error('예약 생성 실패', {
+          description: error.message || '다시 시도해주세요.',
+        });
       }
     } catch (error) {
-      console.error('Reservation creation error:', error);
-      alert('예약 생성 중 오류가 발생했습니다.');
+
+      toast.error('예약 생성 중 오류가 발생했습니다.', {
+        description: '잠시 후 다시 시도해주세요.',
+      });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAfterHoursConfirm = async () => {
+    setShowAfterHoursNotice(false);
+    await submitReservation();
+  };
+
+  const handleAfterHoursCancel = () => {
+    setShowAfterHoursNotice(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -593,8 +686,18 @@ export function CreateReservationPage() {
 
                 {/* Summary */}
                 {selectedDate && formData.startTime && formData.endTime && (
-                  <div className="flex items-center text-sm text-gray-600 bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                    <Clock className="w-4 h-4 mr-2 text-blue-600" />
+                  <div className={`flex items-center text-sm p-4 rounded-lg ${
+                    hasConflict
+                      ? 'bg-red-50 border border-red-200'
+                      : checkingConflict
+                      ? 'bg-gray-50 border border-gray-200'
+                      : 'bg-blue-50 border border-blue-200'
+                  }`}>
+                    {hasConflict ? (
+                      <AlertCircle className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
+                    ) : (
+                      <Clock className="w-4 h-4 mr-2 text-blue-600 flex-shrink-0" />
+                    )}
                     <div>
                       <div className="font-medium text-gray-900">
                         {selectedDate.toLocaleDateString('ko-KR', {
@@ -604,9 +707,19 @@ export function CreateReservationPage() {
                           weekday: 'long'
                         })}
                       </div>
-                      <div className="text-blue-600">
+                      <div className={hasConflict ? 'text-red-600' : 'text-blue-600'}>
                         {formData.startTime} - {formData.endTime}
                       </div>
+                      {hasConflict && (
+                        <div className="text-red-600 text-xs mt-1">
+                          이미 예약된 시간대입니다
+                        </div>
+                      )}
+                      {checkingConflict && (
+                        <div className="text-gray-500 text-xs mt-1">
+                          예약 가능 여부 확인 중...
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -626,14 +739,22 @@ export function CreateReservationPage() {
               <Button
                 type="submit"
                 className="flex-1"
-                disabled={!formData.title || !formData.roomId || !formData.date || !formData.startTime || !formData.endTime || !formData.attendees || submitting}
+                disabled={!formData.title || !formData.roomId || !formData.date || !formData.startTime || !formData.endTime || !formData.attendees || submitting || hasConflict || checkingConflict}
               >
-                {submitting ? '예약 중...' : '예약하기'}
+                {submitting ? '예약 중...' : checkingConflict ? '확인 중...' : hasConflict ? '시간 충돌' : '예약하기'}
               </Button>
             </div>
           </form>
         </div>
       </main>
+
+      {/* 업무시간 외 안내 모달 */}
+      <AfterHoursNoticeDialog
+        isOpen={showAfterHoursNotice}
+        roomName={rooms.find(r => r.roomId === parseInt(formData.roomId))?.name || '선택한 회의실'}
+        onConfirm={handleAfterHoursConfirm}
+        onCancel={handleAfterHoursCancel}
+      />
     </div>
   );
 }

@@ -1,19 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { FtStrategy } from './strategies/ft.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UserModule } from '../user/user.module';
-import { Api42Module } from '../api-42/api-42.module';
+import { AdminModule } from '../admin/admin.module';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [
     UserModule,
+    forwardRef(() => AdminModule),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -26,10 +26,9 @@ import { Api42Module } from '../api-42/api-42.module';
       inject: [ConfigService],
     }),
     ConfigModule,
-    Api42Module,
   ],
-  providers: [AuthService, FtStrategy, JwtStrategy, RolesGuard],
+  providers: [AuthService, JwtStrategy, RolesGuard, TokenBlacklistService],
   controllers: [AuthController],
-  exports: [RolesGuard],
+  exports: [RolesGuard, TokenBlacklistService],
 })
 export class AuthModule {}

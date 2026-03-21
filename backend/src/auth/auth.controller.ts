@@ -3,151 +3,102 @@ import {
   Get,
   UseGuards,
   Req,
-  Res,
   Post,
+  Patch,
   Body,
   HttpCode,
   HttpStatus,
-  Query,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { FtAuthGuard } from './guards/ft-auth.guard';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Request, Response } from 'express';
-import { Api42ConfigService } from '../api-42/api-42-config.service';
-import axios from 'axios';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private configService: ConfigService,
-    private api42ConfigService: Api42ConfigService,
   ) {}
-
-  @Get('42')
-  async ftAuth(@Res() res: Response) {
-    // 직접 OAuth URL 생성 (Passport 우회하여 동적 키 사용)
-    const clientId = this.configService.get<string>('FORTYTWO_CLIENT_ID') || '';
-    const redirectUri = this.configService.get<string>('FORTYTWO_CALLBACK_URL') || '';
-    const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=public`;
-    res.redirect(authUrl);
-  }
-
-  @Get('42/callback')
-  async ftAuthCallback(@Query('code') code: string, @Res() res: Response) {
-    const frontendUrl = this.configService.get<string>(
-      'FRONTEND_URL',
-      'http://localhost:3000',
-    );
-
-    try {
-      if (!code) {
-        throw new Error('No authorization code provided');
-      }
-
-      const clientId = this.configService.get<string>('FORTYTWO_CLIENT_ID') || '';
-      const redirectUri = this.configService.get<string>('FORTYTWO_CALLBACK_URL') || '';
-
-      // Dual key: 모든 유효한 키 가져오기
-      const allSecrets = this.api42ConfigService.getAllClientSecrets();
-      console.log(`Trying ${allSecrets.length} secret key(s)...`);
-
-      let tokenResponse: any = null;
-      let lastError: any = null;
-
-      // 모든 키를 순차적으로 시도 (fallback)
-      for (let i = 0; i < allSecrets.length; i++) {
-        const secret = allSecrets[i];
-        console.log(`Attempt ${i + 1}: Using client secret: ${secret.substring(0, 15)}...`);
-
-        try {
-          tokenResponse = await axios.post('https://api.intra.42.fr/oauth/token', {
-            grant_type: 'authorization_code',
-            client_id: clientId,
-            client_secret: secret,
-            code: code,
-            redirect_uri: redirectUri,
-          });
-
-          console.log(`✅ Success with secret ${i + 1}`);
-
-          // Secondary 키로 성공하면 자동 승격
-          if (i > 0) {
-            console.log('🔄 Secondary key succeeded. Auto-promoting to primary...');
-            try {
-              this.api42ConfigService.promoteNewSecret();
-              console.log('✅ Secondary key promoted to primary successfully');
-            } catch (promoteError) {
-              console.error('Failed to auto-promote secondary key:', promoteError);
-            }
-          }
-
-          break; // 성공하면 중단
-        } catch (error) {
-          lastError = error;
-          console.log(`❌ Failed with secret ${i + 1}:`, error.response?.data?.error || error.message);
-
-          // 마지막 키도 실패하면 에러 throw
-          if (i === allSecrets.length - 1) {
-            throw lastError;
-          }
-        }
-      }
-
-      if (!tokenResponse) {
-        throw new Error('All client secrets failed');
-      }
-
-      const { access_token, refresh_token } = tokenResponse.data;
-
-      // 사용자 정보 가져오기
-      const userResponse = await axios.get('https://api.intra.42.fr/v2/me', {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-
-      const profile = userResponse.data;
-
-      // AuthService를 통해 사용자 생성/조회 및 JWT 발급
-      const authResult = await this.authService.validateOAuthLogin(
-        { _json: profile },
-        refresh_token || access_token,
-      );
-
-      // Frontend로 리다이렉트
-      res.redirect(
-        `${frontendUrl}/auth/callback?access_token=${authResult.access_token}&refresh_token=${authResult.refresh_token}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`,
-      );
-    } catch (error) {
-      console.error('OAuth callback error:', error.response?.data || error.message);
-      res.redirect(
-        `${frontendUrl}/login?error=${encodeURIComponent(error.response?.data?.error_description || error.message || 'Authentication failed')}`,
-      );
-    }
-  }
-
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body() body: { userId: number; refreshToken: string }) {
-    const { access_token } = await this.authService.refreshToken(
-      body.userId,
-      body.refreshToken,
-    );
-    return { access_token };
-  }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '로그아웃', description: '현재 JWT 토큰을 블랙리스트에 추가하여 무효화합니다.' })
+  @ApiResponse({ status: 200, description: '로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증 실패' })
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: any) {
-    await this.authService.logout(req.user.userId);
+  async logout(@Req() req: AuthenticatedRequest) {
+    const token = req.headers.authorization?.replace('Bearer ', '') || '';
+    await this.authService.logout(req.user.userId, token);
     return { message: 'Logged out successfully' };
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getProfile(@Req() req: any) {
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '현재 사용자 정보 조회', description: 'JWT 토큰으로 현재 로그인한 사용자 정보를 조회합니다.' })
+  @ApiResponse({ status: 200, description: '사용자 정보 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 실패' })
+  async getProfile(@Req() req: AuthenticatedRequest) {
     return req.user;
+  }
+
+  @Post('register')
+  @ApiOperation({
+    summary: '회원가입',
+    description: '이름, 인트라 ID, 비밀번호로 회원가입을 진행합니다.'
+  })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ status: 201, description: '회원가입 성공' })
+  @ApiResponse({ status: 400, description: '유효성 검증 실패' })
+  @ApiResponse({ status: 409, description: '이미 사용 중인 인트라 ID' })
+  @ApiResponse({ status: 429, description: 'Rate Limit 초과 (1시간에 3번)' })
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
+  async register(@Body() registerDto: RegisterDto) {
+    return await this.authService.register(registerDto);
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: '비밀번호 변경',
+    description: '현재 비밀번호를 확인한 후 새 비밀번호로 변경합니다.'
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({ status: 200, description: '비밀번호 변경 성공' })
+  @ApiResponse({ status: 400, description: '현재 비밀번호 불일치 또는 유효성 검증 실패' })
+  @ApiResponse({ status: 401, description: '인증 실패' })
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return await this.authService.changePassword(req.user.userId, changePasswordDto);
+  }
+
+  @Post('login')
+  @ApiOperation({
+    summary: '로그인',
+    description: '인트라 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.'
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: '로그인 성공' })
+  @ApiResponse({ status: 401, description: '인트라 ID 또는 비밀번호가 올바르지 않음' })
+  @ApiResponse({ status: 429, description: 'Rate Limit 초과 (60초에 5번)' })
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ipAddress = req.ip || (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor) || req.socket?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return await this.authService.login(loginDto, ipAddress, userAgent);
   }
 }

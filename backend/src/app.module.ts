@@ -2,23 +2,22 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { Api42Module } from './api-42/api-42.module';
+import { TokenBlacklistModule } from './auth/token-blacklist.module';
 import { RoomModule } from './room/room.module';
 import { ReservationModule } from './reservation/reservation.module';
 import { AdminModule } from './admin/admin.module';
-import { ClubModule } from './club/club.module';
 import { User } from './user/entities/user.entity';
-import { Info } from './user/entities/info.entity';
 import { Room } from './room/entities/room.entity';
 import { Reservation } from './reservation/entities/reservation.entity';
 import { SystemSettings } from './admin/entities/system-settings.entity';
 import { ActivityLog } from './admin/entities/activity-log.entity';
-import { Club } from './club/entities/club.entity';
-import { ClubMember } from './club/entities/club-member.entity';
+import { UserSession } from './admin/entities/user-session.entity';
 
 @Module({
   imports: [
@@ -26,6 +25,14 @@ import { ClubMember } from './club/entities/club-member.entity';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
+    TokenBlacklistModule,
+    // Rate Limiting 설정
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,  // Time To Live: 60초 (밀리초 단위)
+        limit: 100,  // 60초 동안 최대 100개 요청 허용
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -37,15 +44,13 @@ import { ClubMember } from './club/entities/club-member.entity';
         database: configService.get('DATABASE_NAME'),
         entities: [
           User,
-          Info,
           Room,
           Reservation,
           SystemSettings,
           ActivityLog,
-          Club,
-          ClubMember,
+          UserSession,
         ],
-        synchronize: true, // Development mode - auto-create tables
+        synchronize: configService.get('NODE_ENV') !== 'production',
         timezone: 'Asia/Seoul', // 한국 시간대 설정
         // Connection pool settings
         extra: {
@@ -66,13 +71,18 @@ import { ClubMember } from './club/entities/club-member.entity';
     }),
     UserModule,
     AuthModule,
-    Api42Module,
     RoomModule,
     ReservationModule,
     AdminModule,
-    ClubModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Rate Limiting Guard를 전역으로 적용
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

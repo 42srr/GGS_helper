@@ -1,39 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Calendar } from '../components/calendar/Calendar';
+import { TimelineCalendar } from '../components/calendar/TimelineCalendar';
+import { TimelineHeader } from '../components/calendar/TimelineHeader';
 import { ReservationFilters } from '../components/reservations/ReservationFilters';
 import { ReservationDetailModal } from '../components/reservations/ReservationDetailModal';
 import { Header } from '../components/layout/Header';
-
-
-interface Reservation {
-  reservationId: number;
-  roomId: number;
-  userId: number;
-  title: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  createdAt?: Date;
-  room?: {
-    roomId: number;
-    name: string;
-    location: string;
-  };
-  user?: {
-    userId: number;
-    name: string;
-  };
-}
-
-interface Room {
-  roomId: number;
-  name: string;
-  location: string;
-  capacity: number;
-  equipment?: string;
-  description?: string;
-  isAvailable: boolean;
-}
+import type { ViewMode, TimeSlot, Reservation, Room } from '@/types/calendar';
 
 export function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -43,6 +14,10 @@ export function ReservationsPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // 타임라인 뷰 상태
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -51,12 +26,12 @@ export function ReservationsPage() {
     try {
       setLoading(true);
       const [reservationsResponse, roomsResponse] = await Promise.all([
-        fetch('http://localhost:3001/reservations', {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         }),
-        fetch('http://localhost:3001/rooms', {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
@@ -79,7 +54,7 @@ export function ReservationsPage() {
         setRooms(roomsData);
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+
     } finally {
       setLoading(false);
     }
@@ -113,9 +88,21 @@ export function ReservationsPage() {
     setSelectedRooms([]);
   };
 
+  const handleEmptySlotClick = (_room: Room, _timeSlot: TimeSlot) => {
+    // 빈 슬롯 클릭 시 예약 생성 페이지로 이동
+
+    // TODO: 빠른 예약 모달 또는 예약 생성 페이지로 이동
+  };
+
   const selectedRoom = selectedReservation
     ? rooms.find(room => room.roomId === selectedReservation.roomId) || null
     : null;
+
+  // 필터링된 회의실 목록
+  const filteredRooms = useMemo(() => {
+    if (selectedRooms.length === 0) return rooms;
+    return rooms.filter(room => selectedRooms.includes(room.roomId.toString()));
+  }, [rooms, selectedRooms]);
 
   if (loading) {
     return (
@@ -167,10 +154,23 @@ export function ReservationsPage() {
           </div>
 
           {/* 캘린더 메인 영역 */}
-          <div className="lg:col-span-3">
-            <Calendar
+          <div className="lg:col-span-3 space-y-6">
+            {/* 타임라인 헤더 */}
+            <TimelineHeader
+              viewMode={viewMode}
+              selectedDate={selectedDate}
+              onViewModeChange={setViewMode}
+              onDateChange={setSelectedDate}
+            />
+
+            {/* 타임라인 캘린더 */}
+            <TimelineCalendar
+              rooms={filteredRooms}
               reservations={filteredReservations}
-              onEventClick={handleEventClick}
+              selectedDate={selectedDate}
+              config={{ viewMode }}
+              onReservationClick={handleEventClick}
+              onEmptySlotClick={handleEmptySlotClick}
             />
           </div>
         </div>

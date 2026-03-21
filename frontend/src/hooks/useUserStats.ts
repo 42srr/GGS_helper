@@ -88,7 +88,7 @@ export function useUserStats() {
     if (!user) return;
 
     try {
-      console.log(`Fetching stats: ${forceRefresh ? 'API refresh (42 API call)' : 'Database load (fast)'}`);
+
       setLoading(true);
       setError(null);
 
@@ -96,9 +96,7 @@ export function useUserStats() {
       const endpoint = forceRefresh ? '/users/stats/refresh' : '/users/dashboard';
       const method = forceRefresh ? 'POST' : 'GET';
 
-      console.log(`Making request to: ${endpoint} (${method})`);
-
-      const response = await fetch(`http://localhost:3001${endpoint}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, {
         method,
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -107,7 +105,7 @@ export function useUserStats() {
       });
 
       if (!response.ok) {
-        console.error(`Response not ok: ${response.status} ${response.statusText}`);
+
         throw new Error('Failed to fetch user stats');
       }
 
@@ -115,26 +113,21 @@ export function useUserStats() {
 
       // 과제 관련 정보는 새로고침시에만 로그 출력
       if (forceRefresh) {
-        console.log('📋 API Response Projects:', {
-          recentProjects: data?.stats?.recentProjects?.length || 0,
-          activeProjects: data?.stats?.activeProjects?.length || 0,
-          source: '42 API'
-        });
 
         if (data?.stats?.activeProjects && data.stats.activeProjects.length > 0) {
-          console.log('🔄 Active Projects from API:');
-          data.stats.activeProjects.forEach((project: any, index: number) => {
-            console.log(`  [${index + 1}] ${project.project?.name} (${project.status})`);
+
+          data.stats.activeProjects.forEach((_project: any, _index: number) => {
+
           });
         } else {
-          console.log('⚠️ No active projects in API response');
+
         }
       }
 
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error fetching user stats:', err);
+
     } finally {
       setLoading(false);
     }

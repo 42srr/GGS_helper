@@ -83,22 +83,14 @@ export class RoomController {
     },
   }))
   async uploadExcel(@UploadedFile() file: Express.Multer.File) {
-    console.log('Upload Excel endpoint called');
-    console.log('File received:', file ? 'Yes' : 'No');
 
     if (!file) {
-      console.error('No file uploaded');
+
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
 
-    console.log('File details:', {
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size
-    });
-
     if (!file.originalname.match(/\.(xlsx|xls)$/)) {
-      console.error('Invalid file type:', file.originalname);
+
       throw new HttpException(
         'Only Excel files are allowed',
         HttpStatus.BAD_REQUEST,
@@ -106,9 +98,8 @@ export class RoomController {
     }
 
     try {
-      console.log('Processing Excel file...');
+
       const result = await this.roomService.uploadFromExcel(file);
-      console.log('Upload result:', result);
 
       return {
         message: 'File processed successfully',
@@ -118,7 +109,7 @@ export class RoomController {
         total: result.success + result.errors.length,
       };
     } catch (error) {
-      console.error('Upload processing error:', error);
+
       throw new HttpException(
         'Failed to process Excel file: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -127,16 +118,19 @@ export class RoomController {
   }
 
   @Get(':id')
+  @RequirePermissions('room:read')
   findOne(@Param('id') id: string) {
     return this.roomService.findOne(+id);
   }
 
   @Patch(':id')
+  @RequirePermissions('room:update')
   update(@Param('id') id: string, @Body() updateRoomDto: UpdateRoomDto) {
     return this.roomService.update(+id, updateRoomDto);
   }
 
   @Delete(':id')
+  @RequirePermissions('room:delete')
   remove(@Param('id') id: string) {
     return this.roomService.remove(+id);
   }

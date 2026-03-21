@@ -2,22 +2,39 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Request } from 'express';
 import { UserService } from '../../user/user.service';
+import { TokenBlacklistService } from '../token-blacklist.service';
+import { JwtPayload } from '../../common/interfaces/authenticated-request.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private configService: ConfigService,
     private userService: UserService,
+    private tokenBlacklistService: TokenBlacklistService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'fallback-secret',
+      secretOrKey: configService.get<string>('JWT_SECRET', { infer: true }) ?? (() => { throw new Error('JWT_SECRET environment variable is required'); })(),
+      passReqToCallback: true,  // request 객체 접근 활성화
     });
   }
 
-  async validate(payload: any) {
+  async validate(request: Request, payload: JwtPayload) {
+    // Authorization 헤더에서 토큰 추출
+    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+
+    // 블랙리스트 확인
+    if (token) {
+      const isBlacklisted = await this.tokenBlacklistService.isBlacklisted(token);
+      if (isBlacklisted) {
+        throw new UnauthorizedException('토큰이 무효화되었습니다. 다시 로그인해주세요.');
+      }
+    }
+
+    // 사용자 확인
     const user = await this.userService.findOne(payload.sub);
     if (!user || !user.isAvailable) {
       throw new UnauthorizedException();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
@@ -18,8 +18,11 @@ import {
   RefreshCw,
   Calendar,
   FileText,
-  Shield
+  Trash2,
+  Settings,
+  Save
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface BackupItem {
   id: string;
@@ -32,38 +35,116 @@ interface BackupItem {
 }
 
 export function AdminBackupPage() {
-  const [backups, setBackups] = useState<BackupItem[]>([
-    {
-      id: '1',
-      name: 'daily_backup_20240924',
-      type: 'auto',
-      size: '245.3 MB',
-      createdAt: '2024-09-24T03:00:00Z',
-      status: 'completed',
-      description: '일일 자동 백업 - 전체 데이터베이스'
-    },
-    {
-      id: '2',
-      name: 'manual_backup_20240923',
-      type: 'manual',
-      size: '238.7 MB',
-      createdAt: '2024-09-23T15:30:00Z',
-      status: 'completed',
-      description: '수동 백업 - 관리자 요청'
-    },
-    {
-      id: '3',
-      name: 'weekly_backup_20240922',
-      type: 'auto',
-      size: '512.1 MB',
-      createdAt: '2024-09-22T02:00:00Z',
-      status: 'completed',
-      description: '주간 백업 - 전체 시스템 + 파일'
-    }
-  ]);
-
+  const [backups, setBackups] = useState<BackupItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
+  const [totalSize, setTotalSize] = useState('0 MB');
+  const [lastBackupTime, setLastBackupTime] = useState('없음');
+  const [backupSchedule, setBackupSchedule] = useState({
+    enabled: false,
+    schedule: '매일 새벽 2시',
+    retentionDays: 30,
+    nextBackup: '없음',
+    backupHour: 2,
+  });
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    enabled: false,
+    retentionDays: 30,
+    backupHour: 2,
+  });
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    fetchBackups();
+    fetchBackupSchedule();
+  }, []);
+
+  const fetchBackups = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/list`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBackups(data.backups || []);
+        setTotalSize(data.totalSize || '0 MB');
+        setLastBackupTime(data.lastBackup || '없음');
+      }
+    } catch (error) {
+
+    }
+  };
+
+  const fetchBackupSchedule = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBackupSchedule(data);
+        setScheduleForm({
+          enabled: data.enabled,
+          retentionDays: data.retentionDays,
+          backupHour: data.backupHour || 2,
+        });
+      }
+    } catch (error) {
+
+    }
+  };
+
+  const handleEditSchedule = () => {
+    setScheduleForm({
+      enabled: backupSchedule.enabled,
+      retentionDays: backupSchedule.retentionDays,
+      backupHour: backupSchedule.backupHour,
+    });
+    setIsEditingSchedule(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingSchedule(false);
+    setScheduleForm({
+      enabled: backupSchedule.enabled,
+      retentionDays: backupSchedule.retentionDays,
+      backupHour: backupSchedule.backupHour,
+    });
+  };
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/schedule`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(scheduleForm),
+      });
+
+      if (response.ok) {
+        alert('✅ 백업 스케줄이 업데이트되었습니다.');
+        await fetchBackupSchedule();
+        setIsEditingSchedule(false);
+      } else {
+        alert('❌ 백업 스케줄 업데이트에 실패했습니다.');
+      }
+    } catch (error) {
+
+      alert('❌ 백업 스케줄 업데이트 중 오류가 발생했습니다.');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('ko-KR', {
@@ -118,11 +199,24 @@ export function AdminBackupPage() {
   };
 
   const handleCreateBackup = async () => {
+    if (!confirm('수동 백업을 생성하시겠습니까?')) return;
+
     setLoading(true);
     setBackupProgress(0);
 
+    // 진행상황 시뮬레이션
+    const interval = setInterval(() => {
+      setBackupProgress(prev => {
+        if (prev >= 95) {
+          clearInterval(interval);
+          return 95;
+        }
+        return prev + 5;
+      });
+    }, 200);
+
     try {
-      const response = await fetch('http://localhost:3001/admin/backup/create', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/create`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -130,43 +224,24 @@ export function AdminBackupPage() {
       });
 
       if (response.ok) {
-        // 진행상황 시뮬레이션
-        const interval = setInterval(() => {
-          setBackupProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              return 100;
-            }
-            return prev + 10;
-          });
-        }, 300);
+        const result = await response.json();
+        clearInterval(interval);
+        setBackupProgress(100);
 
-        setTimeout(() => {
-          const newBackup: BackupItem = {
-            id: Date.now().toString(),
-            name: `manual_backup_${new Date().toISOString().split('T')[0]}`,
-            type: 'manual',
-            size: '0 MB',
-            createdAt: new Date().toISOString(),
-            status: 'in_progress',
-            description: '수동 백업 생성중...'
-          };
+        alert(`✅ 백업이 생성되었습니다.\nID: ${result.backupId}`);
 
-          setBackups(prev => [newBackup, ...prev]);
-
-          setTimeout(() => {
-            setBackups(prev => prev.map(backup =>
-              backup.id === newBackup.id
-                ? { ...backup, status: 'completed', size: '251.8 MB', description: '수동 백업 완료' }
-                : backup
-            ));
-            setBackupProgress(0);
-            setLoading(false);
-          }, 2000);
-        }, 3000);
+        // 백업 목록 새로고침
+        await fetchBackups();
+        setBackupProgress(0);
+      } else {
+        clearInterval(interval);
+        alert('❌ 백업 생성에 실패했습니다.');
       }
     } catch (error) {
-      console.error('백업 생성 실패:', error);
+
+      clearInterval(interval);
+      alert('❌ 백업 생성 중 오류가 발생했습니다.');
+    } finally {
       setLoading(false);
       setBackupProgress(0);
     }
@@ -174,7 +249,7 @@ export function AdminBackupPage() {
 
   const handleDownloadBackup = async (backupId: string, backupName: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/admin/backup/download/${backupId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/download/${backupId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -192,15 +267,15 @@ export function AdminBackupPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('백업 다운로드 실패:', error);
+
     }
   };
 
   const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm('이 백업을 삭제하시겠습니까?')) return;
+    if (!confirm('이 백업을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/admin/backup/${backupId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/${backupId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -208,11 +283,27 @@ export function AdminBackupPage() {
       });
 
       if (response.ok) {
-        setBackups(prev => prev.filter(backup => backup.id !== backupId));
+        alert('✅ 백업이 삭제되었습니다.');
+        await fetchBackups();
+      } else {
+        alert('❌ 백업 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('백업 삭제 실패:', error);
+
+      alert('❌ 백업 삭제 중 오류가 발생했습니다.');
     }
+  };
+
+  const formatRelativeTime = (dateStr: string) => {
+    if (dateStr === '없음') return '없음';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return '방금 전';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
+    return `${Math.floor(diffInSeconds / 86400)}일 전`;
   };
 
   const stats = [
@@ -224,21 +315,21 @@ export function AdminBackupPage() {
     },
     {
       label: '총 백업 크기',
-      value: '996.1 MB',
+      value: totalSize,
       icon: HardDrive,
       color: 'text-green-600'
     },
     {
       label: '마지막 백업',
-      value: '3시간 전',
+      value: formatRelativeTime(lastBackupTime),
       icon: Clock,
       color: 'text-purple-600'
     },
     {
       label: '자동 백업',
-      value: '활성화',
+      value: backupSchedule.enabled ? '활성화' : '비활성화',
       icon: RefreshCw,
-      color: 'text-orange-600'
+      color: backupSchedule.enabled ? 'text-orange-600' : 'text-gray-400'
     }
   ];
 
@@ -302,73 +393,164 @@ export function AdminBackupPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <RefreshCw className="w-5 h-5 mr-2" />
-                자동 백업 설정
-              </CardTitle>
-              <CardDescription>
-                정기적인 자동 백업 스케줄을 관리합니다
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    백업 스케줄
+                  </CardTitle>
+                  <CardDescription>
+                    자동 백업 스케줄 및 보관 정책
+                  </CardDescription>
+                </div>
+                {!isEditingSchedule && (
+                  <Button variant="outline" size="sm" onClick={handleEditSchedule}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    설정
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">일일 백업</p>
-                    <p className="text-sm text-gray-600">매일 오전 3시에 실행</p>
+              {isEditingSchedule ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">자동 백업 활성화</p>
+                      <p className="text-sm text-gray-500">매일 지정한 시간에 자동 백업</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={scheduleForm.enabled}
+                        onChange={(e) => setScheduleForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                      />
+                      <div className={`w-11 h-6 bg-gray-200 rounded-full peer ${scheduleForm.enabled ? 'peer-checked:bg-blue-600' : ''}`}>
+                        <div className={`absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform ${scheduleForm.enabled ? 'translate-x-5' : ''}`}></div>
+                      </div>
+                    </label>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">활성화</Badge>
-                </div>
-                <div className="flex items-center justify-between">
+
                   <div>
-                    <p className="font-medium">주간 백업</p>
-                    <p className="text-sm text-gray-600">매주 일요일 오전 2시에 실행</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      백업 시간
+                    </label>
+                    <select
+                      value={scheduleForm.backupHour}
+                      onChange={(e) => setScheduleForm(prev => ({ ...prev, backupHour: parseInt(e.target.value) }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => {
+                        const hour = i;
+                        const period = hour < 12 ? '오전' : '오후';
+                        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                        return (
+                          <option key={hour} value={hour}>
+                            {period} {displayHour}시
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      매일 지정한 시간에 자동 백업이 실행됩니다
+                    </p>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">활성화</Badge>
-                </div>
-                <div className="flex items-center justify-between">
+
                   <div>
-                    <p className="font-medium">월간 백업</p>
-                    <p className="text-sm text-gray-600">매월 1일 오전 1시에 실행</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      백업 보관 기간 (일)
+                    </label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={scheduleForm.retentionDays}
+                      onChange={(e) => setScheduleForm(prev => ({ ...prev, retentionDays: parseInt(e.target.value) || 30 }))}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      설정한 기간보다 오래된 백업은 자동 삭제됩니다
+                    </p>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">활성화</Badge>
+
+                  <div className="flex space-x-2 pt-2">
+                    <Button onClick={handleSaveSchedule} disabled={savingSchedule} className="flex-1">
+                      {savingSchedule ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          저장 중...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          저장
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelEdit} disabled={savingSchedule} className="flex-1">
+                      취소
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">백업 주기</p>
+                      <p className="text-sm text-gray-500">{backupSchedule.schedule}</p>
+                    </div>
+                    <Badge variant={backupSchedule.enabled ? "default" : "secondary"}>
+                      {backupSchedule.enabled ? "활성화" : "비활성화"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">보관 기간</p>
+                      <p className="text-sm text-gray-500">{backupSchedule.retentionDays}일</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">다음 백업 예정</p>
+                      <p className="text-sm text-gray-500">
+                        {backupSchedule.nextBackup !== '없음'
+                          ? formatRelativeTime(backupSchedule.nextBackup)
+                          : '없음'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Shield className="w-5 h-5 mr-2" />
-                백업 보안 설정
+                <Database className="w-5 h-5 mr-2" />
+                백업 정보
               </CardTitle>
               <CardDescription>
-                백업 데이터의 보안과 보관 정책을 관리합니다
+                백업 파일 저장 위치 및 용량 정보
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">암호화</p>
-                    <p className="text-sm text-gray-600">AES-256 암호화 적용</p>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">적용됨</Badge>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">저장 위치</p>
+                  <p className="text-sm text-gray-500 font-mono">/backups</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">보관 기간</p>
-                    <p className="text-sm text-gray-600">자동 백업 30일 보관</p>
-                  </div>
-                  <Badge variant="outline">30일</Badge>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">총 백업 크기</p>
+                  <p className="text-sm text-gray-500">{totalSize}</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">원격 저장소</p>
-                    <p className="text-sm text-gray-600">클라우드 백업 동기화</p>
-                  </div>
-                  <Badge className="bg-blue-100 text-blue-800">연결됨</Badge>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">백업 파일 수</p>
+                  <p className="text-sm text-gray-500">{backups.length}개</p>
                 </div>
               </div>
             </CardContent>
@@ -430,7 +612,7 @@ export function AdminBackupPage() {
                             onClick={() => handleDeleteBackup(backup.id)}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <AlertCircle className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>

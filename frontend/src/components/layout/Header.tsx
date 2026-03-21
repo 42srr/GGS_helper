@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Plus, Clock, ChevronDown, User, LogOut, BarChart3, Shield, Users } from "lucide-react";
+import { Calendar, Plus, Clock, ChevronDown, User, LogOut, Shield, KeyRound } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function Header() {
@@ -15,36 +15,20 @@ export function Header() {
   const { user, isAuthenticated, logout, isAdmin } = useAuth();
 
   return (
-    <header className="border-b bg-white">
+    <header className="border-b border-line bg-primary">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">42</span>
-          </div>
-          <span className="text-xl font-bold">경산 캠퍼스</span>
+        <Link to="/reservations" className="flex items-center space-x-2">
+          <img src="/logo.png" alt="룸잇" className="w-8 h-8 rounded-lg" />
+          <span className="text-xl font-bold text-white">룸잇</span>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6">
-          {isAuthenticated && (
-            <Link
-              to="/dashboard"
-              className={`flex items-center space-x-1 transition-colors ${
-                location.pathname === '/dashboard'
-                  ? 'text-blue-600 font-medium'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>대시보드</span>
-            </Link>
-          )}
-
           {/* 예약 드롭다운 메뉴 */}
           <DropdownMenu>
-            <DropdownMenuTrigger className={`flex items-center space-x-1 transition-colors hover:text-gray-900 ${
+            <DropdownMenuTrigger className={`flex items-center space-x-1 transition-colors hover:text-accent ${
               location.pathname.startsWith('/reservations') || location.pathname === '/create-reservation' || location.pathname === '/my-reservations'
-                ? 'text-blue-600 font-medium'
-                : 'text-gray-600'
+                ? 'text-accent font-medium'
+                : 'text-white'
             }`}>
               <Calendar className="w-4 h-4" />
               <span>예약</span>
@@ -72,43 +56,14 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 동아리 드롭다운 메뉴 */}
-          {isAuthenticated && (
-            <DropdownMenu>
-              <DropdownMenuTrigger className={`flex items-center space-x-1 transition-colors hover:text-gray-900 ${
-                location.pathname.startsWith('/clubs')
-                  ? 'text-blue-600 font-medium'
-                  : 'text-gray-600'
-              }`}>
-                <Users className="w-4 h-4" />
-                <span>동아리</span>
-                <ChevronDown className="w-3 h-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48 py-2">
-                <DropdownMenuItem asChild className="my-1">
-                  <Link to="/clubs" className="flex items-center">
-                    <Users className="w-4 h-4 mr-2" />
-                    동아리 목록
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="my-1">
-                  <Link to="/clubs/create" className="flex items-center">
-                    <Plus className="w-4 h-4 mr-2" />
-                    동아리 생성
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           {/* 관리자 메뉴 - 관리자에게만 표시 */}
           {isAuthenticated && isAdmin() && (
             <Link
               to="/admin"
               className={`flex items-center space-x-1 transition-colors ${
                 location.pathname.startsWith('/admin')
-                  ? 'text-red-600 font-medium'
-                  : 'text-gray-600 hover:text-red-600'
+                  ? 'text-accent font-medium'
+                  : 'text-white hover:text-accent'
               }`}
             >
               <Shield className="w-4 h-4" />
@@ -130,17 +85,9 @@ export function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="flex items-center space-x-2">
-                    {user?.imageUrl ? (
-                      <img
-                        src={user.imageUrl}
-                        alt={user.displayName || user.login}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    ) : (
-                      <User className="w-4 h-4" />
-                    )}
+                    <User className="w-4 h-4" />
                     <span className="hidden md:inline">
-                      {user?.displayName || user?.login}
+                      {user?.name || user?.intraId}
                     </span>
                     <ChevronDown className="w-3 h-3" />
                   </Button>
@@ -148,10 +95,17 @@ export function Header() {
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <div className="flex flex-col items-start px-2 py-2">
-                      <span className="font-medium">{user?.displayName || user?.login}</span>
-                      <span className="text-xs text-gray-500">{user?.email}</span>
-                      <span className="text-xs text-blue-600 font-medium">{user?.role}</span>
+                      <span className="font-medium text-primary">{user?.name || user?.intraId}</span>
+                      <span className="text-xs text-secondary">{user?.intraId}</span>
+                      <span className="text-xs text-accent font-medium">{user?.role}</span>
                     </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/change-password" className="flex items-center">
+                      <KeyRound className="w-4 h-4 mr-2" />
+                      비밀번호 변경
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {isAdmin() && (

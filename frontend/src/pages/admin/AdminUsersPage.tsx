@@ -65,7 +65,7 @@ export function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/users', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -76,7 +76,7 @@ export function AdminUsersPage() {
         setUsers(data);
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+
     } finally {
       setLoading(false);
     }
@@ -122,13 +122,13 @@ export function AdminUsersPage() {
 
   const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3001/users/${userId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${userId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
-        body: JSON.stringify({ isActive: !currentStatus }),
+        body: JSON.stringify({ isAvailable: !currentStatus }),
       });
 
       if (response.ok) {
@@ -138,14 +138,14 @@ export function AdminUsersPage() {
         alert('상태 변경에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Toggle user status error:', error);
+
       alert('상태 변경 중 오류가 발생했습니다.');
     }
   };
 
   const changeUserRole = async (userId: number, newRole: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/users/${userId}/role`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${userId}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -161,14 +161,14 @@ export function AdminUsersPage() {
         alert('권한 변경에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Change user role error:', error);
+
       alert('권한 변경 중 오류가 발생했습니다.');
     }
   };
 
   const exportToExcel = async () => {
     try {
-      const response = await fetch('http://localhost:3001/users/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -186,7 +186,7 @@ export function AdminUsersPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export users:', error);
+
     }
   };
 
@@ -472,7 +472,7 @@ export function AdminUsersPage() {
                                 onClick={async () => {
                                   if (confirm('예약 금지를 해제하시겠습니까?')) {
                                     try {
-                                      const response = await fetch(`http://localhost:3001/users/${user.userId}/reservation-ban`, {
+                                      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/${user.userId}/reservation-ban`, {
                                         method: 'PATCH',
                                         headers: {
                                           'Content-Type': 'application/json',
@@ -490,7 +490,7 @@ export function AdminUsersPage() {
                                         alert('예약 금지 해제에 실패했습니다.');
                                       }
                                     } catch (error) {
-                                      console.error('Error:', error);
+
                                       alert('오류가 발생했습니다.');
                                     }
                                   }

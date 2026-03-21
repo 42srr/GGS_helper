@@ -35,8 +35,8 @@ export function RoomsPage() {
     try {
       setLoading(true);
       const url = search
-        ? `http://localhost:3001/rooms?search=${encodeURIComponent(search)}`
-        : 'http://localhost:3001/rooms';
+        ? `${import.meta.env.VITE_API_BASE_URL}/rooms?search=${encodeURIComponent(search)}`
+        : `${import.meta.env.VITE_API_BASE_URL}/rooms`;
 
       const response = await fetch(url, {
         headers: {
@@ -50,7 +50,7 @@ export function RoomsPage() {
         setRooms(data.filter((room: Room) => room.isActive));
       }
     } catch (error) {
-      console.error('Failed to fetch rooms:', error);
+
     } finally {
       setLoading(false);
     }

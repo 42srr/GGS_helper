@@ -6,11 +6,24 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Room } from '../../room/entities/room.entity';
 import { User } from '../../user/entities/user.entity';
 
+export type ReservationStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in_progress'
+  | 'awaiting_checkout'
+  | 'finished'
+  | 'cancelled';
+
 @Entity('reservation')
+@Index(['roomId', 'userId'])
+@Index(['startTime', 'endTime'])
+@Index(['status'])
+@Index(['createdAt'])
 export class Reservation {
   @PrimaryGeneratedColumn({ name: 'reservation_id' })
   reservationId: number;
@@ -40,7 +53,7 @@ export class Reservation {
   teamName: string;
 
   @Column({ name: 'reservation_status', type: 'varchar', default: 'confirmed' })
-  status: string;
+  status: ReservationStatus;
 
   @Column({ name: 'is_no_show', type: 'boolean', default: false })
   isNoShow: boolean;
@@ -56,6 +69,18 @@ export class Reservation {
 
   @Column({ name: 'is_late', type: 'boolean', default: false })
   isLate: boolean;
+
+  @Column({ name: 'checkout_photo_path', type: 'varchar', length: 500, nullable: true })
+  checkoutPhotoPath: string | null;
+
+  @Column({ name: 'checkout_photo_url', type: 'varchar', length: 500, nullable: true })
+  checkoutPhotoUrl: string | null;
+
+  @Column({ name: 'checkout_verified_at', type: 'timestamp', nullable: true })
+  checkoutVerifiedAt: Date | null;
+
+  @Column({ name: 'checkout_notes', type: 'text', nullable: true })
+  checkoutNotes: string | null;
 
   @CreateDateColumn({ name: 'reservation_createdat' })
   createdAt: Date;

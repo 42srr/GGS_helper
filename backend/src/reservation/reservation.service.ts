@@ -2,6 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan, LessThan, IsNull } from 'typeorm';
@@ -11,10 +14,15 @@ import { User } from '../user/entities/user.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { AdminService } from '../admin/admin.service';
+import { ImageService } from '../common/services/image.service';
 import * as XLSX from 'xlsx';
+import * as path from 'path';
 
 @Injectable()
 export class ReservationService {
+  private readonly logger = new Logger(ReservationService.name);
+
   constructor(
     @InjectRepository(Reservation)
     private reservationRepository: Repository<Reservation>,
@@ -22,23 +30,79 @@ export class ReservationService {
     private roomRepository: Repository<Room>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @Inject(forwardRef(() => AdminService))
+    private adminService: AdminService,
+    private imageService: ImageService,
   ) {}
 
-  // 매 시간마다 예약 시간이 지난 confirmed 예약을 finished로 변경
+  // 매 시간마다 예약 시간이 지난 confirmed 예약을 awaiting_checkout으로 변경
   @Cron(CronExpression.EVERY_HOUR)
-  async updateFinishedReservations() {
+  async updateAwaitingCheckoutReservations() {
     const now = new Date();
 
     const result = await this.reservationRepository
       .createQueryBuilder()
       .update(Reservation)
-      .set({ status: 'finished' })
+      .set({ status: 'awaiting_checkout' })
       .where('reservation_endtime < :now', { now })
       .andWhere('reservation_status = :status', { status: 'confirmed' })
       .execute();
 
     if (result.affected && result.affected > 0) {
-      console.log(`Updated ${result.affected} reservations to finished status`);
+
+    }
+  }
+
+  // 6시간마다 이미지 업로드 완료된 것만 finished로 전환
+  @Cron('0 */6 * * *')
+  async updateFinishedReservations() {
+    const result = await this.reservationRepository
+      .createQueryBuilder()
+      .update(Reservation)
+      .set({ status: 'finished' })
+      .where('reservation_status = :status', { status: 'awaiting_checkout' })
+      .andWhere('checkout_photo_url IS NOT NULL')
+      .execute();
+
+    if (result.affected && result.affected > 0) {
+
+    }
+  }
+
+  // 매일 오전 9시 - 24시간 이상 이미지 미업로드 예약 알림
+  @Cron('0 9 * * *', { timeZone: 'Asia/Seoul' })
+  async sendOverdueCheckoutReminders() {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const overdueReservations = await this.reservationRepository.find({
+      where: {
+        status: 'awaiting_checkout',
+        endTime: LessThan(yesterday),
+      },
+      relations: ['user', 'room'],
+    });
+
+    if (overdueReservations.length > 0) {
+
+      // Slack 알림 발송 (관리자용)
+      if (overdueReservations.length > 0) {
+        const message =
+          `⚠️ 체크아웃 사진 미업로드 알림\n\n` +
+          `24시간 이상 미업로드 예약: ${overdueReservations.length}건\n\n` +
+          overdueReservations
+            .map(
+              (r) =>
+                `- ${r.user.intraId} (${r.room.name}) - 종료: ${r.endTime.toLocaleString('ko-KR')}`
+            )
+            .join('\n');
+
+        // TODO: Slack webhook 설정 후 알림 활성화
+        // try {
+        //   await this.adminService.sendSlackNotification(webhookUrl, message);
+        // } catch (error) {
+        //   console.error('Failed to send Slack notification:', error);
+        // }
+      }
     }
   }
 
@@ -59,7 +123,6 @@ export class ReservationService {
     });
 
     if (expiredReservations.length > 0) {
-      console.log(`Found ${expiredReservations.length} reservations to mark as no-show`);
 
       for (const reservation of expiredReservations) {
         await this.markAsNoShow(reservation);
@@ -98,7 +161,7 @@ export class ReservationService {
       }
 
       await this.userRepository.save(user);
-      console.log(`User ${user.userId} no-show count: ${user.noShowCount}, banned until: ${user.banUntil || 'permanent'}`);
+
     }
   }
 
@@ -145,21 +208,7 @@ export class ReservationService {
     // 시간 유효성 검사
     const start = new Date(startTime);
     const end = new Date(endTime);
-
-    if (start >= end) {
-      throw new BadRequestException('시작 시간은 종료 시간보다 빨라야 합니다');
-    }
-
-    if (start < new Date()) {
-      throw new BadRequestException('과거 시간으로는 예약할 수 없습니다');
-    }
-
-    // 예약 시간 제한 (최대 2시간)
-    const durationInMs = end.getTime() - start.getTime();
-    const durationInHours = durationInMs / (1000 * 60 * 60);
-    if (durationInHours > 2) {
-      throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
-    }
+    this.validateReservationTime(start, end, true);
 
     // 중복 예약 확인 (DB 레벨에서 최적화된 쿼리)
     const hasConflict = await this.checkTimeConflict(roomId, start, end);
@@ -187,7 +236,55 @@ export class ReservationService {
       status,
     });
 
-    return await this.reservationRepository.save(reservation);
+    const savedReservation = await this.reservationRepository.save(reservation);
+
+    // Slack 알림 전송 (비동기, 실패해도 예약 생성에 영향 없음)
+    this.sendSlackNotificationIfEnabled(savedReservation, user, room).catch((err) => {
+      this.logger.warn(`Slack notification failed for reservation ${savedReservation.reservationId}: ${err.message}`);
+    });
+
+    return savedReservation;
+  }
+
+  private async sendSlackNotificationIfEnabled(
+    reservation: Reservation,
+    user: User,
+    room: Room,
+  ): Promise<void> {
+    try {
+      const settings = await this.adminService.getSettings();
+
+      if (
+        settings.notifications?.slackEnabled &&
+        settings.notifications?.slackWebhookUrl
+      ) {
+        await this.adminService.sendSlackNotification(
+          settings.notifications.slackWebhookUrl,
+          {
+            userName: user.intraId,
+            username: user.intraId,
+            roomName: room.name,
+            startTime: reservation.startTime,
+            endTime: reservation.endTime,
+            purpose: reservation.title || reservation.description,
+          },
+        );
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to send Slack notification: ${error.message}`);
+      // 알림 실패는 예약 생성을 막지 않음
+    }
+  }
+
+  /**
+   * 예약 충돌 체크 (공개 API)
+   */
+  async checkConflict(
+    roomId: number,
+    start: Date,
+    end: Date,
+  ): Promise<boolean> {
+    return this.checkTimeConflict(roomId, start, end);
   }
 
   // 시간 충돌 검사 헬퍼 메서드 (DB 레벨에서 최적화)
@@ -213,6 +310,33 @@ export class ReservationService {
     return count > 0;
   }
 
+  /**
+   * 예약 시간 유효성 검증
+   * @param startTime 시작 시간
+   * @param endTime 종료 시간
+   * @param checkPastTime 과거 시간 검사 여부 (신규 예약시 true)
+   */
+  private validateReservationTime(
+    startTime: Date,
+    endTime: Date,
+    checkPastTime: boolean = true,
+  ): void {
+    if (startTime >= endTime) {
+      throw new BadRequestException('시작 시간은 종료 시간보다 빨라야 합니다');
+    }
+
+    if (checkPastTime && startTime < new Date()) {
+      throw new BadRequestException('과거 시간으로는 예약할 수 없습니다');
+    }
+
+    // 예약 시간 제한 (최대 2시간)
+    const durationInMs = endTime.getTime() - startTime.getTime();
+    const durationInHours = durationInMs / (1000 * 60 * 60);
+    if (durationInHours > 2) {
+      throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
+    }
+  }
+
   async findAll(): Promise<Reservation[]> {
     return await this.reservationRepository.find({
       relations: ['room', 'user'],
@@ -223,7 +347,7 @@ export class ReservationService {
   async findByUser(userId: number): Promise<Reservation[]> {
     return await this.reservationRepository.find({
       where: { userId },
-      relations: ['room'],
+      relations: ['room', 'user'],
       order: { startTime: 'DESC' },
     });
   }
@@ -299,18 +423,8 @@ export class ReservationService {
         ? new Date(updateReservationDto.endTime)
         : reservation.endTime;
 
-      if (newStartTime >= newEndTime) {
-        throw new BadRequestException(
-          '시작 시간은 종료 시간보다 빨라야 합니다',
-        );
-      }
-
-      // 예약 시간 제한 (최대 2시간)
-      const durationInMs = newEndTime.getTime() - newStartTime.getTime();
-      const durationInHours = durationInMs / (1000 * 60 * 60);
-      if (durationInHours > 2) {
-        throw new BadRequestException('1회 예약은 최대 2시간까지만 가능합니다');
-      }
+      // 시간 유효성 검증 (수정 시에는 과거 시간 체크 불필요)
+      this.validateReservationTime(newStartTime, newEndTime, false);
 
       // 다른 예약과의 충돌 확인 (본인 예약 제외, 최적화된 쿼리 사용)
       const hasConflict = await this.checkTimeConflict(
@@ -441,9 +555,9 @@ export class ReservationService {
       throw new BadRequestException('이미 종료된 예약입니다');
     }
 
-    // 예약 종료 시간을 현재 시간으로 변경하고 상태를 finished로 변경
+    // 예약 종료 시간을 현재 시간으로 변경하고 상태를 awaiting_checkout으로 변경
     reservation.endTime = now;
-    reservation.status = 'finished';
+    reservation.status = 'awaiting_checkout';
 
     return await this.reservationRepository.save(reservation);
   }
@@ -535,13 +649,11 @@ export class ReservationService {
 
       if (user) {
         user.lateCount += 1;
-        console.log(`User ${user.userId} late count: ${user.lateCount}`);
 
         // 지각 3회시 노쇼 카운트 1회 추가 및 즉시 7일간 예약 금지
         if (user.lateCount >= 3) {
           user.noShowCount += 1;
           user.lateCount = 0; // 지각 카운트 초기화
-          console.log(`User ${user.userId} reached 3 lates. No-show count increased to: ${user.noShowCount}`);
 
           // 즉시 7일간 예약 금지
           user.isReservationBanned = true;
@@ -554,7 +666,6 @@ export class ReservationService {
             user.banUntil = null; // 영구 금지 (해제일 없음)
           }
 
-          console.log(`User ${user.userId} banned until ${user.banUntil || 'permanent'}`);
         }
 
         await this.userRepository.save(user);
@@ -578,7 +689,7 @@ export class ReservationService {
       throw new NotFoundException('예약을 찾을 수 없습니다');
     }
 
-    reservation.status = status;
+    reservation.status = status as any; // Type assertion for admin operations
     return await this.reservationRepository.save(reservation);
   }
 
@@ -628,7 +739,7 @@ export class ReservationService {
       설명: reservation.description || '',
       회의실: reservation.room?.name || '',
       '회의실 위치': reservation.room?.location || '',
-      예약자: reservation.user?.name || '',
+      예약자: reservation.user?.intraId || '',
       '시작 시간': reservation.startTime,
       '종료 시간': reservation.endTime,
       '참석 인원': reservation.attendees || 0,
@@ -654,5 +765,156 @@ export class ReservationService {
     return Buffer.from(
       XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
     );
+  }
+
+  /**
+   * 체크아웃 인증 사진 업로드
+   */
+  async uploadCheckoutPhoto(
+    reservationId: number,
+    file: Express.Multer.File,
+    userId: number,
+    notes?: string,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('Photo file is required');
+    }
+
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+      relations: ['room', 'user'],
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    // 예약 소유자 확인
+    if (reservation.userId !== userId) {
+      throw new BadRequestException(
+        'You can only upload photos for your own reservations',
+      );
+    }
+
+    // 이미 체크아웃 완료된 경우 기존 사진 삭제
+    if (reservation.checkoutPhotoPath) {
+      this.imageService.deleteFile(reservation.checkoutPhotoPath);
+      // 썸네일도 삭제
+      const thumbnailPath = reservation.checkoutPhotoPath.replace(
+        '_optimized',
+        '_optimized_thumb',
+      );
+      this.imageService.deleteFile(thumbnailPath);
+    }
+
+    // 이미지 최적화
+    const optimizedPath = await this.imageService.optimizeImage(file.path);
+
+    // 썸네일 생성
+    const thumbnailPath = await this.imageService.createThumbnail(optimizedPath);
+
+    // URL 생성 (정적 파일 서빙 경로)
+    const photoUrl = `/uploads/checkout-photos/${path.basename(optimizedPath)}`;
+    const thumbnailUrl = `/uploads/checkout-photos/${path.basename(thumbnailPath)}`;
+
+    // DB 업데이트
+    reservation.checkoutPhotoPath = optimizedPath;
+    reservation.checkoutPhotoUrl = photoUrl;
+    reservation.checkoutVerifiedAt = new Date();
+    reservation.checkoutNotes = notes || null;
+
+    // 🔥 핵심: 사진 업로드 완료 시 finished 상태로 전환
+    if (
+      reservation.status === 'awaiting_checkout' ||
+      reservation.status === 'confirmed'
+    ) {
+      reservation.status = 'finished';
+    }
+
+    await this.reservationRepository.save(reservation);
+
+    return {
+      message: 'Checkout photo uploaded successfully',
+      photoUrl,
+      thumbnailUrl,
+      verifiedAt: reservation.checkoutVerifiedAt,
+      status: reservation.status,
+    };
+  }
+
+  /**
+   * 체크아웃 사진 조회
+   */
+  async getCheckoutPhoto(reservationId: number): Promise<any> {
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+      select: [
+        'reservationId',
+        'checkoutPhotoUrl',
+        'checkoutVerifiedAt',
+        'checkoutNotes',
+      ],
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (!reservation.checkoutPhotoUrl) {
+      return {
+        hasPhoto: false,
+        message: 'No checkout photo available',
+      };
+    }
+
+    return {
+      hasPhoto: true,
+      photoUrl: reservation.checkoutPhotoUrl,
+      verifiedAt: reservation.checkoutVerifiedAt,
+      notes: reservation.checkoutNotes,
+    };
+  }
+
+  /**
+   * 체크아웃 사진 삭제
+   */
+  async deleteCheckoutPhoto(
+    reservationId: number,
+    userId: number,
+  ): Promise<void> {
+    const reservation = await this.reservationRepository.findOne({
+      where: { reservationId },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    // 예약 소유자 또는 관리자만 삭제 가능
+    if (reservation.userId !== userId) {
+      throw new BadRequestException(
+        'You can only delete photos for your own reservations',
+      );
+    }
+
+    if (!reservation.checkoutPhotoPath) {
+      throw new NotFoundException('No checkout photo to delete');
+    }
+
+    // 파일 삭제
+    this.imageService.deleteFile(reservation.checkoutPhotoPath);
+    const thumbnailPath = reservation.checkoutPhotoPath.replace(
+      '_optimized',
+      '_optimized_thumb',
+    );
+    this.imageService.deleteFile(thumbnailPath);
+
+    // DB 업데이트
+    reservation.checkoutPhotoPath = null;
+    reservation.checkoutPhotoUrl = null;
+    reservation.checkoutVerifiedAt = null;
+    reservation.checkoutNotes = null;
+
+    await this.reservationRepository.save(reservation);
   }
 }

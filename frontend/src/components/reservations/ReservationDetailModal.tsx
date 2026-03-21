@@ -8,41 +8,23 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { CheckoutPhotoUpload } from '../checkout/CheckoutPhotoUpload';
+import { CheckoutPhotoView } from '../checkout/CheckoutPhotoView';
+import type { Reservation, Room } from '@/types/calendar';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-interface Room {
-  roomId: number;
-  name: string;
-  location: string;
-  capacity: number;
-  equipment?: string;
-  description?: string;
-  isAvailable?: boolean;
-}
-
-interface Reservation {
-  reservationId: number;
-  roomId: number;
-  userId: number;
-  title: string;
-  description?: string;
-  startTime: Date | string;
-  endTime: Date | string;
-  createdAt?: Date | string;
+// Extended Reservation type with no-show fields and additional user properties
+type ExtendedReservation = Omit<Reservation, 'user'> & {
   isNoShow?: boolean;
   noShowReportCount?: number;
-  room?: {
-    roomId: number;
-    name: string;
-    location: string;
-  };
   user?: {
     userId: number;
     name?: string;
+    email?: string;
     login?: string;
   };
-}
+};
 
 interface ReservationDetailModalProps {
   reservation: Reservation | null;
@@ -63,9 +45,11 @@ export function ReservationDetailModal({
 
   if (!reservation || !room) return null;
 
-  const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleDateString('ko-KR', {
+  // Type assertion for extended reservation with no-show fields
+  const extReservation = reservation as ExtendedReservation;
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -73,9 +57,8 @@ export function ReservationDetailModal({
     });
   };
 
-  const formatTime = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleTimeString('ko-KR', {
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
@@ -83,9 +66,7 @@ export function ReservationDetailModal({
   };
 
   const getDuration = () => {
-    const startTime = typeof reservation.startTime === 'string' ? new Date(reservation.startTime) : reservation.startTime;
-    const endTime = typeof reservation.endTime === 'string' ? new Date(reservation.endTime) : reservation.endTime;
-    const diffMs = endTime.getTime() - startTime.getTime();
+    const diffMs = reservation.endTime.getTime() - reservation.startTime.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -126,9 +107,8 @@ export function ReservationDetailModal({
   const canReportNoShow = () => {
     if (!reservation) return false;
     const now = new Date();
-    const endTime = typeof reservation.endTime === 'string' ? new Date(reservation.endTime) : reservation.endTime;
     // 예약 종료 시간이 지났고, 아직 노쇼 신고되지 않은 경우
-    return endTime <= now && !reservation.isNoShow;
+    return reservation.endTime <= now && !extReservation.isNoShow;
   };
 
   return (
@@ -158,7 +138,7 @@ export function ReservationDetailModal({
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <User className="w-5 h-5 text-gray-600" />
             <div>
-              <p className="font-medium text-gray-900">{reservation.user?.name || reservation.user?.login || '알 수 없음'}</p>
+              <p className="font-medium text-gray-900">{extReservation.user?.name || extReservation.user?.login || '알 수 없음'}</p>
               <p className="text-sm text-gray-600">예약자</p>
             </div>
           </div>
@@ -211,15 +191,15 @@ export function ReservationDetailModal({
           </div>
 
           {/* 노쇼 상태 표시 */}
-          {reservation.isNoShow && (
+          {extReservation.isNoShow && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <div className="flex items-center gap-2 text-red-800">
                 <AlertTriangle className="w-5 h-5" />
                 <span className="font-semibold">노쇼 신고됨</span>
               </div>
-              {reservation.noShowReportCount && reservation.noShowReportCount > 1 && (
+              {extReservation.noShowReportCount && extReservation.noShowReportCount > 1 && (
                 <p className="text-sm text-red-600 mt-1">
-                  신고 횟수: {reservation.noShowReportCount}회
+                  신고 횟수: {extReservation.noShowReportCount}회
                 </p>
               )}
             </div>
@@ -238,6 +218,35 @@ export function ReservationDetailModal({
             </div>
           )}
 
+          {/* 체크아웃 인증 사진 */}
+          {reservation.status === 'finished' && (
+            <div className="border-t pt-4">
+              <CheckoutPhotoView reservationId={reservation.reservationId} />
+            </div>
+          )}
+
+          {/* 체크아웃 사진 업로드 (awaiting_checkout 또는 confirmed 상태이고 종료 시간이 지난 경우) */}
+          {(reservation.status === 'awaiting_checkout' ||
+            (reservation.status === 'confirmed' && new Date() > reservation.endTime)) && (
+            <div className="border-t pt-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-yellow-900">
+                  ⚠️ 체크아웃 사진 업로드가 필요합니다
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  회의실 반납을 완료하려면 사진을 업로드해주세요.
+                </p>
+              </div>
+              <CheckoutPhotoUpload
+                reservationId={reservation.reservationId}
+                onUploadSuccess={() => {
+                  // 업로드 성공 후 모달 새로고침 또는 닫기
+                  onClose();
+                }}
+              />
+            </div>
+          )}
+
           {/* 예약 생성 정보 */}
           {reservation.createdAt && (
             <div className="text-xs text-gray-500 pt-2 border-t">
@@ -247,7 +256,7 @@ export function ReservationDetailModal({
 
           {/* 액션 버튼 */}
           <div className="flex gap-2 pt-2">
-            {!reservation.isNoShow && (
+            {!extReservation.isNoShow && (
               <Button
                 size="sm"
                 variant="outline"
@@ -263,7 +272,7 @@ export function ReservationDetailModal({
               size="sm"
               variant="outline"
               onClick={onClose}
-              className={!reservation.isNoShow ? "flex-1" : "w-full"}
+              className={!extReservation.isNoShow ? "flex-1" : "w-full"}
             >
               <X className="w-4 h-4 mr-2" />
               닫기
@@ -271,7 +280,7 @@ export function ReservationDetailModal({
           </div>
 
           {/* 노쇼 신고 안내 */}
-          {!reservation.isNoShow && !canReportNoShow() && (
+          {!extReservation.isNoShow && !canReportNoShow() && (
             <p className="text-xs text-gray-500 text-center -mt-2">
               * 예약 종료 시간 이후에 노쇼 신고가 가능합니다.
             </p>

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 커스텀 컬러 팔레트 CSS 변수 */
+:root {
+  --color-primary: #111827;
+  --color-secondary: #374151;
+  --color-accent: #0EA5E9;
+  --color-background: #FFFFFF;
+  --color-surface: #F3F4F6;
+  --color-line: #D1D5DB;
+}
+
 /* 드롭다운 메뉴 배경 불투명하게 설정 */
 [data-radix-popper-content-wrapper] {
   z-index: 50;

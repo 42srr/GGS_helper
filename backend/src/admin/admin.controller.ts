@@ -13,6 +13,8 @@ import {
   UploadedFile,
   HttpException,
   HttpStatus,
+  Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -20,15 +22,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequirePermissions } from '../auth/decorators/roles.decorator';
 import { AdminService } from './admin.service';
-import { Api42ConfigService } from '../api-42/api-42-config.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @RequirePermissions('admin:*')
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(
     private readonly adminService: AdminService,
-    private readonly api42ConfigService: Api42ConfigService,
   ) {}
 
   @Post('backup/create')
@@ -65,7 +67,26 @@ export class AdminController {
 
   @Get('backup/list')
   async getBackupList() {
-    return await this.adminService.getBackupList();
+    const backups = await this.adminService.getBackupList();
+    const stats = await this.adminService.getBackupStats();
+    return {
+      backups,
+      ...stats,
+    };
+  }
+
+  @Get('backup/schedule')
+  async getBackupSchedule() {
+    return this.adminService.getBackupScheduleStatus();
+  }
+
+  @Put('backup/schedule')
+  async updateBackupSchedule(@Body() body: { enabled: boolean; retentionDays: number; backupHour?: number }) {
+    await this.adminService.updateBackupSchedule(body.enabled, body.retentionDays, body.backupHour);
+    return {
+      message: 'Backup schedule updated successfully',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Post('backup/restore')
@@ -79,14 +100,12 @@ export class AdminController {
 
   @Get('system/stats')
   async getSystemStats() {
-    console.log('Admin system stats endpoint called');
     try {
       const stats = await this.adminService.getSystemStats();
-      console.log('System stats result:', stats);
       return stats;
     } catch (error) {
-      console.error('System stats error:', error);
-      throw error;
+      this.logger.error(`Failed to get system stats: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('시스템 통계 조회 중 오류가 발생했습니다.');
     }
   }
 
@@ -102,6 +121,25 @@ export class AdminController {
       message: 'Settings updated successfully',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Post('settings/test-slack')
+  async testSlackWebhook(@Body() body: { webhookUrl: string }) {
+    try {
+      await this.adminService.testSlackWebhook(body.webhookUrl);
+      return {
+        message: 'Slack test message sent successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'Failed to send Slack test message',
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   @Post('system/maintenance')
@@ -132,11 +170,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'Database reset failed',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`Database reset failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('데이터베이스 초기화 중 오류가 발생했습니다.');
     }
   }
 
@@ -149,11 +184,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'Failed to clear logs',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`Failed to clear logs: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('로그 정리 중 오류가 발생했습니다.');
     }
   }
 
@@ -167,11 +199,8 @@ export class AdminController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      return {
-        error: 'API key tests failed',
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      };
+      this.logger.error(`API key tests failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('API 키 테스트 중 오류가 발생했습니다.');
     }
   }
 
@@ -210,70 +239,6 @@ export class AdminController {
     return {
       message: 'Sample activities created successfully',
       timestamp: new Date().toISOString(),
-    };
-  }
-
-  // 42 API Key 관리
-  @Get('api-keys/42/info')
-  async get42ApiKeyInfo() {
-    return this.api42ConfigService.getConfigInfo();
-  }
-
-  @Post('api-keys/42/set-new')
-  async set42NewApiKey(@Body() body: { secret: string }) {
-    if (!body.secret || body.secret.length < 10) {
-      throw new HttpException('Invalid secret key', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.setNewClientSecret(body.secret);
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 추가되었습니다.',
-      note: 'Dual key 모드가 활성화되었습니다. 현재 키와 새 키 모두 유효합니다.',
-    };
-  }
-
-  @Post('api-keys/42/promote')
-  async promote42ApiKey() {
-    const info = this.api42ConfigService.getConfigInfo();
-    if (!info.newSecretActive) {
-      throw new HttpException('No new secret to promote', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.promoteNewSecret();
-
-    // 서버 자동 재시작 (개발 환경에서만 권장)
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        console.log('🔄 Auto-restarting server to apply new OAuth secret...');
-        process.exit(0); // nodemon/pm2가 자동으로 재시작함
-      }, 1000);
-    }
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 primary로 승격되었습니다.',
-      note: process.env.NODE_ENV === 'development'
-        ? '서버가 자동으로 재시작됩니다...'
-        : '운영 환경에서는 수동으로 서버를 재시작해주세요.',
-      restartRequired: process.env.NODE_ENV !== 'development',
-    };
-  }
-
-  @Post('api-keys/42/remove-new')
-  async remove42NewApiKey() {
-    const info = this.api42ConfigService.getConfigInfo();
-    if (!info.newSecretActive) {
-      throw new HttpException('No new secret to remove', HttpStatus.BAD_REQUEST);
-    }
-
-    this.api42ConfigService.removeNewSecret();
-
-    return {
-      success: true,
-      message: '새로운 42 API Secret이 제거되었습니다.',
-      note: '현재 키만 사용합니다.',
     };
   }
 

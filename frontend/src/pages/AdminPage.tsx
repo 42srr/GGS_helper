@@ -14,8 +14,7 @@ import {
   Database,
   FileText,
   ChevronRight,
-  RefreshCw,
-  Users as ClubIcon
+  RefreshCw
 } from 'lucide-react';
 
 // 상대적 시간 표시 함수
@@ -61,21 +60,16 @@ export function AdminPage() {
 
   const fetchSystemStats = async () => {
     try {
-      console.log('Fetching system stats...');
       const token = localStorage.getItem('accessToken');
-      console.log('Access token:', token ? 'Found' : 'Not found');
 
-      const response = await fetch('http://localhost:3001/admin/system/stats', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/system/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
       });
 
-      console.log('System stats response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('System stats data:', data);
         setStats(prev => ({
           ...prev,
           totalRooms: data.totalRooms,
@@ -83,81 +77,61 @@ export function AdminPage() {
           totalUsers: data.totalUsers,
           totalReservations: data.totalReservations
         }));
-      } else {
-        const errorData = await response.text();
-        console.error('System stats error:', errorData);
       }
     } catch (error) {
-      console.error('Failed to fetch system stats:', error);
+
     }
   };
 
   const fetchStatistics = async () => {
     try {
-      console.log('Fetching statistics...');
       const token = localStorage.getItem('accessToken');
 
-      const response = await fetch('http://localhost:3001/admin/statistics?period=30d', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics?period=30d`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
       });
 
-      console.log('Statistics response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Statistics data:', data);
         setStats(prev => ({
           ...prev,
           userGrowth: data.overview?.userGrowth || 0,
           reservationGrowth: data.overview?.reservationGrowth || 0
         }));
-      } else {
-        const errorData = await response.text();
-        console.error('Statistics error:', errorData);
       }
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+
     }
   };
 
   const fetchRecentActivities = async () => {
     try {
-      console.log('Fetching recent activities...');
       const token = localStorage.getItem('accessToken');
 
-      const response = await fetch('http://localhost:3001/admin/activities/recent?limit=5', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/activities/recent?limit=5`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
       });
 
-      console.log('Activities response status:', response.status);
-
       if (response.ok) {
         const activities = await response.json();
-        console.log('Activities data:', activities);
         setRecentActivities(activities);
-      } else {
-        const errorData = await response.text();
-        console.error('Activities error:', errorData);
-
+      } else if (response.status === 401) {
         // 샘플 데이터 생성 시도
-        if (response.status === 401) {
-          console.log('Unauthorized - trying to create sample data...');
-          await createSampleActivities();
-        }
+        await createSampleActivities();
       }
     } catch (error) {
-      console.error('Failed to fetch recent activities:', error);
+
     }
   };
 
   const createSampleActivities = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:3001/admin/activities/create-samples', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/activities/create-samples`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -166,12 +140,12 @@ export function AdminPage() {
       });
 
       if (response.ok) {
-        console.log('Sample activities created');
+
         // 샘플 데이터 생성 후 다시 활동 로그 가져오기
         fetchRecentActivities();
       }
     } catch (error) {
-      console.error('Failed to create sample activities:', error);
+
     }
   };
 
@@ -180,7 +154,7 @@ export function AdminPage() {
     try {
       switch (action) {
         case 'backup':
-          const backupResponse = await fetch('http://localhost:3001/admin/backup/create', {
+          const backupResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/backup/create`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -192,7 +166,7 @@ export function AdminPage() {
           }
           break;
         case 'clear-logs':
-          const logsResponse = await fetch('http://localhost:3001/admin/system/clear-logs', {
+          const logsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/system/clear-logs`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -204,7 +178,7 @@ export function AdminPage() {
           }
           break;
         case 'export-stats':
-          const exportResponse = await fetch('http://localhost:3001/admin/statistics/export', {
+          const exportResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
             }
@@ -220,7 +194,7 @@ export function AdminPage() {
           break;
       }
     } catch (error) {
-      console.error('Failed to execute action:', error);
+
       alert('작업 실행에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -251,14 +225,6 @@ export function AdminPage() {
       link: '/admin/reservations',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
-    },
-    {
-      title: '동아리 관리',
-      description: '동아리 생성 승인 및 관리',
-      icon: ClubIcon,
-      link: '/admin/clubs',
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50'
     },
     {
       title: '통계 대시보드',

@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import { SystemSettings } from './entities/system-settings.entity';
 import { ActivityLog, ActivityType } from './entities/activity-log.entity';
+import { UserSession } from './entities/user-session.entity';
+import { DEFAULT_SETTINGS, SystemSettings as SystemSettingsType } from '../common/constants/default-settings.constant';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as XLSX from 'xlsx';
-
-const execAsync = promisify(exec);
 
 @Injectable()
 export class AdminService {
+  private serverStartTime: Date = new Date();
+
   constructor(
     @InjectDataSource()
     private dataSource: DataSource,
@@ -20,6 +20,8 @@ export class AdminService {
     private settingsRepository: Repository<SystemSettings>,
     @InjectRepository(ActivityLog)
     private activityLogRepository: Repository<ActivityLog>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
   ) {}
 
   async createBackup(): Promise<string> {
@@ -57,7 +59,7 @@ export class AdminService {
 
         pgDump.on('close', (code) => {
           if (code === 0) {
-            console.log('Backup created successfully:', backupPath);
+
             resolve();
           } else {
             reject(new Error(`pg_dump exited with code ${code}`));
@@ -81,7 +83,7 @@ export class AdminService {
 
       return backupId;
     } catch (error) {
-      console.error('Backup creation failed:', error);
+
       // 실패 시 빈 SQL 파일 생성 (개발용)
       const mockBackup = `-- Mock backup created at ${new Date().toISOString()}
 -- Database: ${this.dataSource.options['database']}
@@ -151,9 +153,64 @@ SELECT 'Backup completed successfully' as status;
     return backups;
   }
 
+  async getBackupStats(): Promise<any> {
+    const backupDir = path.join(process.cwd(), 'backups');
+
+    if (!fs.existsSync(backupDir)) {
+      return {
+        totalSize: '0 MB',
+        lastBackup: '없음',
+      };
+    }
+
+    const files = fs.readdirSync(backupDir);
+    const sqlFiles = files.filter((file) => file.endsWith('.sql'));
+
+    if (sqlFiles.length === 0) {
+      return {
+        totalSize: '0 MB',
+        lastBackup: '없음',
+      };
+    }
+
+    // 총 크기 계산 및 생성 시간 수집
+    let totalBytes = 0;
+    const times: Date[] = [];
+
+    sqlFiles.forEach((file) => {
+      const filePath = path.join(backupDir, file);
+      const stats = fs.statSync(filePath);
+      totalBytes += stats.size;
+      times.push(stats.birthtime);
+    });
+
+    // 가장 최근 백업 시간 찾기
+    const latestTime = times.length > 0
+      ? times.reduce((latest, current) => current > latest ? current : latest)
+      : null;
+
+    return {
+      totalSize: this.formatFileSize(totalBytes),
+      lastBackup: latestTime ? latestTime.toISOString() : '없음',
+    };
+  }
+
   async restoreBackup(backupId: string): Promise<void> {
     const backupDir = path.join(process.cwd(), 'backups');
+
+    // 백업 ID 유효성 검증 (알파벳, 숫자, 언더스코어만 허용)
+    if (!/^[\w-]+$/.test(backupId)) {
+      throw new Error('Invalid backup ID format');
+    }
+
     const backupPath = path.join(backupDir, `${backupId}.sql`);
+
+    // Path traversal 방지: 백업 파일이 backupDir 내에 있는지 확인
+    const resolvedBackupPath = path.resolve(backupPath);
+    const resolvedBackupDir = path.resolve(backupDir);
+    if (!resolvedBackupPath.startsWith(resolvedBackupDir)) {
+      throw new Error('Invalid backup path');
+    }
 
     if (!fs.existsSync(backupPath)) {
       throw new Error('Backup file not found');
@@ -163,20 +220,47 @@ SELECT 'Backup completed successfully' as status;
       // PostgreSQL 연결 정보 가져오기
       const dbConfig = this.dataSource.options;
 
-      // psql을 사용한 복원 (실제 운영환경에서는 주의 필요)
+      // psql을 사용한 복원 (spawn 사용으로 command injection 방지)
       const env = {
         ...process.env,
         PGPASSWORD: dbConfig['password']?.toString() || '',
       };
 
-      const command = `psql -h ${dbConfig['host'] || 'localhost'} -p ${dbConfig['port'] || 5432} -U ${dbConfig['username']} -d ${dbConfig['database']} -f ${backupPath}`;
+      const { spawn } = require('child_process');
 
-      console.log('Restoring backup with command:', command);
-      await execAsync(command, { env });
+      await new Promise<void>((resolve, reject) => {
+        const psql = spawn('psql', [
+          '-h', String(dbConfig['host'] || 'localhost'),
+          '-p', String(dbConfig['port'] || 5432),
+          '-U', String(dbConfig['username']),
+          '-d', String(dbConfig['database']),
+          '-f', resolvedBackupPath,
+        ], { env });
 
-      console.log('Backup restored successfully');
+        psql.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`psql exited with code ${code}`));
+          }
+        });
+
+        psql.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      // 활동 로그 기록
+      await this.logActivity(
+        ActivityType.BACKUP_CREATED,
+        '백업 복원 완료',
+        `백업 파일이 복원되었습니다: ${backupId}`,
+        undefined,
+        { backupId },
+        'success',
+      );
+
     } catch (error) {
-      console.error('Backup restoration failed:', error);
       throw new Error('Backup restoration failed');
     }
   }
@@ -207,7 +291,7 @@ SELECT 'Backup completed successfully' as status;
         lastBackup: await this.getLastBackupTime(),
       };
     } catch (error) {
-      console.error('Failed to get system stats:', error);
+
       // 기본값 반환
       return {
         totalUsers: 0,
@@ -265,39 +349,11 @@ SELECT 'Backup completed successfully' as status;
   }
 
   // 설정 관리 메서드들
-  async getSettings(): Promise<any> {
+  async getSettings(): Promise<SystemSettingsType> {
     try {
-      // 기본 설정값
-      const defaultSettings = {
-        reservation: {
-          maxDaysAdvance: 30,
-          maxDuration: 8,
-          allowWeekends: false,
-          requireApproval: true,
-        },
-        notifications: {
-          emailEnabled: true,
-          reminderHours: 24,
-          adminNotifications: true,
-          systemAlerts: true,
-        },
-        security: {
-          sessionTimeout: 60,
-          maxLoginAttempts: 5,
-          requireStrongPassword: true,
-          twoFactorAuth: false,
-        },
-        system: {
-          maintenanceMode: false,
-          debugMode: false,
-          backupRetentionDays: 30,
-          logLevel: 'info',
-        },
-      };
-
       // 저장된 설정 조회
       const settingsRecords = await this.settingsRepository.find();
-      const settings = { ...defaultSettings };
+      const settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 
       // 저장된 설정으로 덮어쓰기
       settingsRecords.forEach((record) => {
@@ -312,34 +368,8 @@ SELECT 'Backup completed successfully' as status;
 
       return settings;
     } catch (error) {
-      console.error('Failed to get settings:', error);
       // 에러 시 기본 설정 반환
-      return {
-        reservation: {
-          maxDaysAdvance: 30,
-          maxDuration: 8,
-          allowWeekends: false,
-          requireApproval: true,
-        },
-        notifications: {
-          emailEnabled: true,
-          reminderHours: 24,
-          adminNotifications: true,
-          systemAlerts: true,
-        },
-        security: {
-          sessionTimeout: 60,
-          maxLoginAttempts: 5,
-          requireStrongPassword: true,
-          twoFactorAuth: false,
-        },
-        system: {
-          maintenanceMode: false,
-          debugMode: false,
-          backupRetentionDays: 30,
-          logLevel: 'info',
-        },
-      };
+      return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     }
   }
 
@@ -367,8 +397,6 @@ SELECT 'Backup completed successfully' as status;
         }
       }
 
-      console.log('Settings updated successfully');
-
       // 활동 로그 기록
       await this.logActivity(
         ActivityType.SETTINGS_UPDATED,
@@ -379,8 +407,132 @@ SELECT 'Backup completed successfully' as status;
         'success',
       );
     } catch (error) {
-      console.error('Failed to update settings:', error);
+
       throw error;
+    }
+  }
+
+  async testSlackWebhook(webhookUrl: string): Promise<void> {
+    try {
+      const testMessage = {
+        text: '🔔 *Slack 웹훅 테스트*',
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🔔 Slack 웹훅 연동 테스트',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: 'Slack 웹훅이 정상적으로 연동되었습니다!\n회의실 예약 신청 시 알림을 받을 수 있습니다.',
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `테스트 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testMessage),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}: ${response.statusText}`);
+      }
+
+    } catch (error) {
+
+      throw new Error(`Slack 웹훅 테스트 실패: ${error.message}`);
+    }
+  }
+
+  async sendSlackNotification(
+    webhookUrl: string,
+    reservation: any,
+  ): Promise<void> {
+    try {
+      const message = {
+        text: '📅 새로운 회의실 예약 신청',
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '📅 새로운 회의실 예약 신청',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*예약자:*\n${reservation.userName || reservation.username}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*회의실:*\n${reservation.roomName}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*시작 시간:*\n${new Date(reservation.startTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+              {
+                type: 'mrkdwn',
+                text: `*종료 시간:*\n${new Date(reservation.endTime).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*목적:*\n${reservation.purpose || '미입력'}`,
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `신청 시간: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+              },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}`);
+      }
+
+    } catch (error) {
+
+      // Slack 알림 실패는 예약 생성을 막지 않음
     }
   }
 
@@ -449,167 +601,182 @@ SELECT 'Backup completed successfully' as status;
 
   // 통계 관련 메서드들
   async getStatistics(period: string = '30d'): Promise<any> {
-    try {
-      const days = this.parsePeriodToDays(period);
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+    const days = this.parsePeriodToDays(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
 
-      // 전체 통계
-      const totalUsers = await this.dataSource.query(
-        'SELECT COUNT(*) FROM users',
-      );
-      const totalRooms = await this.dataSource.query(
-        'SELECT COUNT(*) FROM room',
-      );
-      const totalReservations = await this.dataSource.query(
-        'SELECT COUNT(*) FROM reservation',
-      );
-      const activeReservations = await this.dataSource.query(
-        `SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()`,
-      );
+    // 전체 통계 - 단일 쿼리로 통합
+    const overviewStats = await this.dataSource.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM room) as total_rooms,
+        (SELECT COUNT(*) FROM reservation) as total_reservations,
+        (SELECT COUNT(*) FROM reservation WHERE reservation_starttime > NOW()) as active_reservations
+    `);
 
-      // 성장률 계산
-      const userGrowth = await this.calculateGrowthRate('users', days);
-      const reservationGrowth = await this.calculateGrowthRate(
-        'reservation',
-        days,
-      );
+    const { total_users, total_rooms, total_reservations, active_reservations } = overviewStats[0];
 
-      // 예약 상태별 통계 (status 필드 제거됨 - 빈 결과 반환)
-      const reservationsByStatus = [];
+    // 성장률 계산
+    const userGrowth = await this.calculateGrowthRate('users', days);
+    const reservationGrowth = await this.calculateGrowthRate(
+      'reservation',
+      days,
+    );
 
-      // 월별 예약 추이
-      const monthlyReservations = await this.dataSource.query(
-        `
-        SELECT
-          TO_CHAR(reservation_createdat, 'YYYY-MM') as month,
-          COUNT(*) as count
-        FROM reservation
-        WHERE reservation_createdat >= $1
-        GROUP BY TO_CHAR(reservation_createdat, 'YYYY-MM')
-        ORDER BY month DESC
-        LIMIT 6
-      `,
-        [startDate],
-      );
+    // 예약 상태별 통계
+    const reservationsByStatus = await this.dataSource.query(
+      `
+      SELECT
+        reservation_status as status,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY reservation_status
+    `,
+      [startDate],
+    );
 
-      // 회의실별 이용률
-      const roomStats = await this.dataSource.query(
-        `
-        SELECT
-          r.room_name as room_name,
-          COUNT(res.reservation_id) as reservation_count,
-          ROUND(COUNT(res.reservation_id) * 100.0 / GREATEST(1, $1), 2) as utilization
-        FROM room r
-        LEFT JOIN reservation res ON r.room_id = res.room_id
-          AND res.reservation_createdat >= $2
-        GROUP BY r.room_id, r.room_name
-        ORDER BY reservation_count DESC
-      `,
-        [days, startDate],
-      );
+    const statusCounts = {
+      confirmed: 0,
+      cancelled: 0,
+      completed: 0,
+    };
+    reservationsByStatus.forEach((r: any) => {
+      if (r.status === 'confirmed') statusCounts.confirmed = parseInt(r.count);
+      else if (r.status === 'cancelled') statusCounts.cancelled = parseInt(r.count);
+      else if (r.status === 'finished') statusCounts.completed = parseInt(r.count);
+    });
 
-      // 시간대별 예약 현황
-      const hourlyStats = await this.dataSource.query(
-        `
-        SELECT
-          EXTRACT(HOUR FROM reservation_starttime) as hour,
-          COUNT(*) as count
-        FROM reservation
-        WHERE reservation_createdat >= $1
-        GROUP BY EXTRACT(HOUR FROM reservation_starttime)
-        ORDER BY hour
-      `,
-        [startDate],
-      );
+    // 월별 예약 추이
+    const monthlyReservations = await this.dataSource.query(
+      `
+      SELECT
+        TO_CHAR(reservation_createdat, 'YYYY-MM') as month,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY TO_CHAR(reservation_createdat, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 6
+    `,
+      [startDate],
+    );
 
-      // 활발한 사용자
-      const topUsers = await this.dataSource.query(
-        `
-        SELECT
-          u.user_name as login,
-          u.user_name as displayName,
-          COUNT(r.reservation_id) as reservation_count
-        FROM users u
-        LEFT JOIN reservation r ON u.user_id = r.user_id
-          AND r.reservation_createdat >= $1
-        GROUP BY u.user_id, u.user_name
-        ORDER BY reservation_count DESC
-        LIMIT 5
-      `,
-        [startDate],
-      );
+    // 회의실별 이용률
+    const roomStats = await this.dataSource.query(
+      `
+      SELECT
+        r.room_name as room_name,
+        COUNT(res.reservation_id) as reservation_count,
+        ROUND(COUNT(res.reservation_id) * 100.0 / GREATEST(1, $1), 2) as utilization
+      FROM room r
+      LEFT JOIN reservation res ON r.room_id = res.room_id
+        AND res.reservation_createdat >= $2
+      GROUP BY r.room_id, r.room_name
+      ORDER BY reservation_count DESC
+    `,
+      [days, startDate],
+    );
 
-      // 사용자 등록 추이
-      const userRegistrationTrend = await this.dataSource.query(
-        `
-        SELECT
-          TO_CHAR(user_createdat, 'YYYY-MM') as month,
-          COUNT(*) as count
-        FROM users
-        WHERE user_createdat >= $1
-        GROUP BY TO_CHAR(user_createdat, 'YYYY-MM')
-        ORDER BY month DESC
-        LIMIT 6
-      `,
-        [startDate],
-      );
+    // 시간대별 예약 현황
+    const hourlyStats = await this.dataSource.query(
+      `
+      SELECT
+        EXTRACT(HOUR FROM reservation_starttime) as hour,
+        COUNT(*) as count
+      FROM reservation
+      WHERE reservation_createdat >= $1
+      GROUP BY EXTRACT(HOUR FROM reservation_starttime)
+      ORDER BY hour
+    `,
+      [startDate],
+    );
 
-      return {
-        overview: {
-          totalUsers: parseInt(totalUsers[0].count),
-          totalRooms: parseInt(totalRooms[0].count),
-          totalReservations: parseInt(totalReservations[0].count),
-          activeReservations: parseInt(activeReservations[0].count),
-          userGrowth: userGrowth,
-          reservationGrowth: reservationGrowth,
-        },
-        reservationStats: {
-          byStatus: {
-            confirmed: 0,
-            cancelled: 0,
-            completed: 0,
-          },
-          byMonth: monthlyReservations.map((m) => ({
-            month: this.formatMonth(m.month),
-            count: parseInt(m.count),
-            growth: 0, // 계산 로직 추가 가능
-          })),
-          byRoom: roomStats.map((r) => ({
-            roomName: r.room_name,
-            count: parseInt(r.reservation_count),
-            utilization: parseFloat(r.utilization),
-          })),
-          byHour: hourlyStats.map((h) => ({
-            hour: parseInt(h.hour),
-            count: parseInt(h.count),
-          })),
-        },
-        userStats: {
-          activeUsers: parseInt(totalUsers[0].count), // 활성 사용자 로직 추가 가능
-          newUsersThisMonth: 0, // 이번 달 신규 사용자 계산 로직 추가
-          topUsers: topUsers.map((u) => ({
-            login: u.login,
-            displayName: u.displayName,
-            reservationCount: parseInt(u.reservation_count),
-          })),
-          registrationTrend: userRegistrationTrend.map((u) => ({
-            month: this.formatMonth(u.month),
-            count: parseInt(u.count),
-          })),
-        },
-        systemStats: {
-          averageSessionDuration: 45, // 실제 세션 분석 로직 추가 가능
-          peakUsageHour: 15, // 피크 시간 계산
-          systemUptime: 99.8, // 시스템 가동률
-          errorRate: 0.2, // 에러율
-        },
-      };
-    } catch (error) {
-      console.error('Failed to get statistics:', error);
-      // 기본 mock 데이터 반환
-      return this.getMockStatistics();
-    }
+    // 활발한 사용자
+    const topUsers = await this.dataSource.query(
+      `
+      SELECT
+        u.user_intra_id as login,
+        u.user_intra_id as displayName,
+        COUNT(r.reservation_id) as reservation_count
+      FROM users u
+      LEFT JOIN reservation r ON u.user_id = r.user_id
+        AND r.reservation_createdat >= $1
+      GROUP BY u.user_id, u.user_intra_id
+      ORDER BY reservation_count DESC
+      LIMIT 5
+    `,
+      [startDate],
+    );
+
+    // 사용자 등록 추이
+    const userRegistrationTrend = await this.dataSource.query(
+      `
+      SELECT
+        TO_CHAR(user_createdat, 'YYYY-MM') as month,
+        COUNT(*) as count
+      FROM users
+      WHERE user_createdat >= $1
+      GROUP BY TO_CHAR(user_createdat, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 6
+    `,
+      [startDate],
+    );
+
+    // 이번 달 신규 사용자 수
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1);
+    thisMonthStart.setHours(0, 0, 0, 0);
+    const newUsersThisMonth = await this.dataSource.query(
+      `SELECT COUNT(*) FROM users WHERE user_createdat >= $1`,
+      [thisMonthStart],
+    );
+
+    // 시스템 통계 계산
+    const systemStats = await this.calculateSystemStats(startDate);
+
+    return {
+      overview: {
+        totalUsers: parseInt(total_users),
+        totalRooms: parseInt(total_rooms),
+        totalReservations: parseInt(total_reservations),
+        activeReservations: parseInt(active_reservations),
+        userGrowth: userGrowth,
+        reservationGrowth: reservationGrowth,
+      },
+      reservationStats: {
+        byStatus: statusCounts,
+        byMonth: monthlyReservations.map((m) => ({
+          month: this.formatMonth(m.month),
+          count: parseInt(m.count),
+          growth: 0,
+        })),
+        byRoom: roomStats.map((r) => ({
+          roomName: r.room_name,
+          count: parseInt(r.reservation_count),
+          utilization: parseFloat(r.utilization),
+        })),
+        byHour: hourlyStats.map((h) => ({
+          hour: parseInt(h.hour),
+          count: parseInt(h.count),
+        })),
+      },
+      userStats: {
+        activeUsers: parseInt(total_users),
+        newUsersThisMonth: parseInt(newUsersThisMonth[0].count),
+        topUsers: topUsers.map((u) => ({
+          login: u.login,
+          displayName: u.displayName,
+          reservationCount: parseInt(u.reservation_count),
+        })),
+        registrationTrend: userRegistrationTrend.map((u) => ({
+          month: this.formatMonth(u.month),
+          count: parseInt(u.count),
+        })),
+      },
+      systemStats,
+    };
   }
 
   async exportStatistics(): Promise<Buffer> {
@@ -674,7 +841,7 @@ SELECT 'Backup completed successfully' as status;
         XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
       );
     } catch (error) {
-      console.error('Failed to export statistics:', error);
+
       throw error;
     }
   }
@@ -733,7 +900,7 @@ SELECT 'Backup completed successfully' as status;
       if (previous === 0) return current > 0 ? 100 : 0;
       return Math.round(((current - previous) / previous) * 100 * 100) / 100;
     } catch (error) {
-      console.error('Failed to calculate growth rate:', error);
+
       return 0;
     }
   }
@@ -743,83 +910,162 @@ SELECT 'Backup completed successfully' as status;
     return `${parseInt(month)}월`;
   }
 
-  private getMockStatistics(): any {
+  // ========== 세션 추적 시스템 ==========
+
+  /**
+   * 사용자 로그인 시 세션 생성
+   */
+  async createSession(
+    userId: number,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<UserSession> {
+    // 기존 활성 세션 종료
+    await this.endActiveSessions(userId);
+
+    const session = this.userSessionRepository.create({
+      userId,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+      isActive: true,
+    });
+
+    return await this.userSessionRepository.save(session);
+  }
+
+  /**
+   * 사용자 로그아웃 시 세션 종료
+   */
+  async endSession(userId: number): Promise<void> {
+    const activeSessions = await this.userSessionRepository.find({
+      where: { userId, isActive: true },
+    });
+
+    const now = new Date();
+    for (const session of activeSessions) {
+      session.logoutAt = now;
+      session.isActive = false;
+      session.durationMinutes = Math.round(
+        (now.getTime() - session.loginAt.getTime()) / (1000 * 60),
+      );
+      await this.userSessionRepository.save(session);
+    }
+  }
+
+  /**
+   * 사용자의 모든 활성 세션 종료
+   */
+  private async endActiveSessions(userId: number): Promise<void> {
+    await this.endSession(userId);
+  }
+
+  /**
+   * 시스템 통계 계산 (세션 기반)
+   */
+  private async calculateSystemStats(startDate: Date): Promise<{
+    averageSessionDuration: number;
+    peakUsageHour: number;
+    systemUptime: number;
+    errorRate: number;
+  }> {
+    let averageSessionDuration = 0;
+    let peakUsageHour = 14;
+    let errorRate = 0;
+
+    // 평균 세션 시간 계산 (테이블이 없을 수 있음)
+    try {
+      const avgDurationResult = await this.dataSource.query(
+        `
+        SELECT COALESCE(AVG(duration_minutes), 0) as avg_duration
+        FROM user_sessions
+        WHERE login_at >= $1 AND duration_minutes IS NOT NULL
+      `,
+        [startDate],
+      );
+      averageSessionDuration = Math.round(
+        parseFloat(avgDurationResult[0]?.avg_duration || '0'),
+      );
+
+      // 피크 사용 시간대 계산 (로그인 기준)
+      const peakHourResult = await this.dataSource.query(
+        `
+        SELECT EXTRACT(HOUR FROM login_at) as hour, COUNT(*) as count
+        FROM user_sessions
+        WHERE login_at >= $1
+        GROUP BY EXTRACT(HOUR FROM login_at)
+        ORDER BY count DESC
+        LIMIT 1
+      `,
+        [startDate],
+      );
+      peakUsageHour = peakHourResult[0]
+        ? parseInt(peakHourResult[0].hour)
+        : 14;
+    } catch {
+      // user_sessions 테이블이 없는 경우 기본값 사용
+    }
+
+    // 시스템 가동률 계산 (서버 시작 시간 기준)
+    const uptimeMs = Date.now() - this.serverStartTime.getTime();
+    const totalPeriodMs = Date.now() - startDate.getTime();
+    const systemUptime = Math.min(
+      100,
+      Math.round((uptimeMs / totalPeriodMs) * 100 * 100) / 100,
+    );
+
+    // 에러율 계산 (activity_logs에서 error 레벨 비율)
+    try {
+      const errorRateResult = await this.dataSource.query(
+        `
+        SELECT
+          COUNT(*) FILTER (WHERE level = 'error') as error_count,
+          COUNT(*) as total_count
+        FROM activity_logs
+        WHERE "createdAt" >= $1
+      `,
+        [startDate],
+      );
+      const errorCount = parseInt(errorRateResult[0]?.error_count || '0');
+      const totalLogs = parseInt(errorRateResult[0]?.total_count || '1');
+      errorRate =
+        totalLogs > 0
+          ? Math.round((errorCount / totalLogs) * 100 * 100) / 100
+          : 0;
+    } catch {
+      // activity_logs 테이블 에러 시 기본값 사용
+    }
+
     return {
-      overview: {
-        totalUsers: 156,
-        totalRooms: 12,
-        totalReservations: 342,
-        activeReservations: 24,
-        userGrowth: 12.5,
-        reservationGrowth: 8.3,
-      },
-      reservationStats: {
-        byStatus: {
-          confirmed: 24,
-          cancelled: 8,
-          completed: 310,
-        },
-        byMonth: [
-          { month: '6월', count: 55, growth: 9.1 },
-          { month: '5월', count: 48, growth: 7.3 },
-          { month: '4월', count: 41, growth: -8.2 },
-          { month: '3월', count: 52, growth: 12.8 },
-          { month: '2월', count: 38, growth: -2.1 },
-          { month: '1월', count: 45, growth: 5.2 },
-        ],
-        byRoom: [
-          { roomName: '대회의실 A', count: 85, utilization: 78.5 },
-          { roomName: '소회의실 B', count: 62, utilization: 65.2 },
-          { roomName: '프로젝트룸 C', count: 48, utilization: 52.3 },
-          { roomName: '스터디룸 D', count: 35, utilization: 41.8 },
-          { roomName: '세미나실', count: 28, utilization: 38.9 },
-        ],
-        byHour: [
-          { hour: 9, count: 15 },
-          { hour: 10, count: 25 },
-          { hour: 11, count: 32 },
-          { hour: 12, count: 8 },
-          { hour: 13, count: 12 },
-          { hour: 14, count: 28 },
-          { hour: 15, count: 35 },
-          { hour: 16, count: 30 },
-          { hour: 17, count: 18 },
-          { hour: 18, count: 10 },
-        ],
-      },
-      userStats: {
-        activeUsers: 134,
-        newUsersThisMonth: 18,
-        topUsers: [
-          { login: 'yutsong', displayName: '유영재', reservationCount: 15 },
-          { login: 'jskim', displayName: '김진수', reservationCount: 12 },
-          { login: 'hpark', displayName: '박현우', reservationCount: 11 },
-          { login: 'slee', displayName: '이승현', reservationCount: 9 },
-          { login: 'mkim', displayName: '김민지', reservationCount: 8 },
-        ],
-        registrationTrend: [
-          { month: '6월', count: 18 },
-          { month: '5월', count: 28 },
-          { month: '4월', count: 21 },
-          { month: '3월', count: 32 },
-          { month: '2월', count: 18 },
-          { month: '1월', count: 25 },
-        ],
-      },
-      systemStats: {
-        averageSessionDuration: 45,
-        peakUsageHour: 15,
-        systemUptime: 99.8,
-        errorRate: 0.2,
-      },
+      averageSessionDuration,
+      peakUsageHour,
+      systemUptime,
+      errorRate,
     };
   }
 
-  // 위험한 시스템 작업들
+  /**
+   * 현재 활성 세션 수 조회
+   */
+  async getActiveSessionCount(): Promise<number> {
+    const result = await this.userSessionRepository.count({
+      where: { isActive: true },
+    });
+    return result;
+  }
+
+  /**
+   * 특정 사용자의 세션 이력 조회
+   */
+  async getUserSessions(userId: number, limit: number = 10): Promise<UserSession[]> {
+    return await this.userSessionRepository.find({
+      where: { userId },
+      order: { loginAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  // ========== 위험한 시스템 작업들 ==========
   async resetDatabase(): Promise<void> {
-    console.warn(
-      '⚠️ DATABASE RESET REQUESTED - This is a dangerous operation!',
-    );
 
     // 실제 운영환경에서는 이 기능을 비활성화하거나 추가 보안 검증을 해야 합니다
     if (process.env.NODE_ENV === 'production') {
@@ -843,15 +1089,13 @@ SELECT 'Backup completed successfully' as status;
         'TRUNCATE TABLE system_settings RESTART IDENTITY CASCADE',
       );
 
-      console.log('✅ Database reset completed');
     } catch (error) {
-      console.error('❌ Database reset failed:', error);
+
       throw new Error('Failed to reset database: ' + error.message);
     }
   }
 
   async clearLogs(): Promise<void> {
-    console.log('🧹 Clearing log files...');
 
     try {
       const fs = require('fs');
@@ -875,28 +1119,26 @@ SELECT 'Backup completed successfully' as status;
               for (const file of files) {
                 const filePath = path.join(logPath, file);
                 fs.unlinkSync(filePath);
-                console.log(`Deleted log file: ${filePath}`);
+
               }
             } else {
               // 파일인 경우 직접 삭제
               fs.unlinkSync(logPath);
-              console.log(`Deleted log file: ${logPath}`);
+
             }
           }
         } catch (error) {
-          console.warn(`Failed to delete ${logPath}:`, error.message);
+
         }
       }
 
-      console.log('✅ Log files cleared');
     } catch (error) {
-      console.error('❌ Failed to clear logs:', error);
+
       throw new Error('Failed to clear logs: ' + error.message);
     }
   }
 
   async testApiKeys(): Promise<any> {
-    console.log('🔧 Testing API keys...');
 
     const results = {
       api42: false,
@@ -925,15 +1167,15 @@ SELECT 'Backup completed successfully' as status;
 
           if (response.status === 200) {
             results.api42 = true;
-            console.log('✅ 42 API connection test passed');
+
           } else {
-            console.log('❌ 42 API connection test failed:', response.status);
+
           }
         } catch (error) {
-          console.log('❌ 42 API connection test error:', error.message);
+
         }
       } else {
-        console.log('⚠️ 42 API credentials not configured');
+
       }
 
       // 이메일 API 테스트 (SMTP 또는 SendGrid)
@@ -946,18 +1188,17 @@ SELECT 'Backup completed successfully' as status;
           // 이메일 설정이 있다고 가정하고 true로 설정
           // 실제 환경에서는 SMTP 연결 테스트나 API 호출을 수행
           results.email = true;
-          console.log('✅ Email API configuration found');
+
         } catch (error) {
-          console.log('❌ Email API test error:', error.message);
+
         }
       } else {
-        console.log('⚠️ Email API credentials not configured');
+
       }
     } catch (error) {
-      console.error('❌ API key tests failed:', error);
+
     }
 
-    console.log('🔧 API key test results:', results);
     return results;
   }
 
@@ -981,7 +1222,7 @@ SELECT 'Backup completed successfully' as status;
       });
       await this.activityLogRepository.save(activityLog);
     } catch (error) {
-      console.error('Failed to log activity:', error);
+
     }
   }
 
@@ -993,7 +1234,7 @@ SELECT 'Backup completed successfully' as status;
         take: limit,
       });
     } catch (error) {
-      console.error('Failed to get recent activities:', error);
+
       return [];
     }
   }
@@ -1010,7 +1251,7 @@ SELECT 'Backup completed successfully' as status;
         take: limit,
       });
     } catch (error) {
-      console.error('Failed to get activities by type:', error);
+
       return [];
     }
   }
@@ -1026,9 +1267,8 @@ SELECT 'Backup completed successfully' as status;
         .where('createdAt < :cutoffDate', { cutoffDate })
         .execute();
 
-      console.log(`Cleared activity logs older than ${daysOld} days`);
     } catch (error) {
-      console.error('Failed to clear old activities:', error);
+
     }
   }
 
@@ -1089,10 +1329,172 @@ SELECT 'Backup completed successfully' as status;
         }
       }
 
-      console.log('Sample activities created successfully');
     } catch (error) {
-      console.error('Failed to create sample activities:', error);
+
     }
+  }
+
+  /**
+   * 오래된 백업 파일 삭제
+   * @param retentionDays 보관 기간 (일)
+   */
+  async cleanupOldBackups(retentionDays: number): Promise<number> {
+    const backupDir = path.join(process.cwd(), 'backups');
+
+    if (!fs.existsSync(backupDir)) {
+      return 0;
+    }
+
+    const files = fs.readdirSync(backupDir);
+    const sqlFiles = files.filter((file) => file.endsWith('.sql'));
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+    let deletedCount = 0;
+
+    for (const file of sqlFiles) {
+      const filePath = path.join(backupDir, file);
+      const stats = fs.statSync(filePath);
+
+      if (stats.birthtime < cutoffDate) {
+        fs.unlinkSync(filePath);
+        deletedCount++;
+
+      }
+    }
+
+    // 활동 로그 기록
+    if (deletedCount > 0) {
+      await this.logActivity(
+        ActivityType.BACKUP_CREATED,
+        '오래된 백업 정리',
+        `${deletedCount}개의 오래된 백업 파일이 삭제되었습니다`,
+        undefined,
+        { deletedCount, retentionDays },
+        'info',
+      );
+    }
+
+    return deletedCount;
+  }
+
+  /**
+   * 백업 스케줄 상태 조회
+   */
+  async getBackupScheduleStatus(): Promise<any> {
+    const settings = await this.getSettings();
+    const backupHour = settings.system?.backupHour || 2;
+
+    return {
+      enabled: settings.system?.backupEnabled !== false, // 자동 백업 활성화 여부 (기본값: true)
+      schedule: this.formatBackupSchedule(backupHour),
+      backupHour: backupHour,
+      retentionDays: settings.system?.backupRetentionDays || 30,
+      lastBackup: await this.getLastBackupTime(),
+      nextBackup: this.getNextBackupTime(backupHour),
+    };
+  }
+
+  /**
+   * 백업 스케줄 포맷팅
+   */
+  private formatBackupSchedule(hour: number): string {
+    const period = hour < 12 ? '오전' : '오후';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `매일 ${period} ${displayHour}시`;
+  }
+
+  /**
+   * 백업 스케줄 설정 업데이트
+   */
+  async updateBackupSchedule(enabled: boolean, retentionDays: number, backupHour?: number): Promise<void> {
+    try {
+      // 백업 활성화 상태 업데이트
+      const enabledSetting = await this.settingsRepository.findOne({
+        where: { key: 'system.backupEnabled' },
+      });
+
+      if (enabledSetting) {
+        enabledSetting.value = enabled;
+        await this.settingsRepository.save(enabledSetting);
+      } else {
+        const newSetting = this.settingsRepository.create({
+          key: 'system.backupEnabled',
+          value: enabled,
+          description: '자동 백업 활성화 여부',
+        });
+        await this.settingsRepository.save(newSetting);
+      }
+
+      // 백업 보관 기간 업데이트
+      const retentionSetting = await this.settingsRepository.findOne({
+        where: { key: 'system.backupRetentionDays' },
+      });
+
+      if (retentionSetting) {
+        retentionSetting.value = retentionDays;
+        await this.settingsRepository.save(retentionSetting);
+      } else {
+        const newSetting = this.settingsRepository.create({
+          key: 'system.backupRetentionDays',
+          value: retentionDays,
+          description: '백업 보관 기간 (일)',
+        });
+        await this.settingsRepository.save(newSetting);
+      }
+
+      // 백업 시간 업데이트
+      if (backupHour !== undefined) {
+        const hourSetting = await this.settingsRepository.findOne({
+          where: { key: 'system.backupHour' },
+        });
+
+        if (hourSetting) {
+          hourSetting.value = backupHour;
+          await this.settingsRepository.save(hourSetting);
+        } else {
+          const newSetting = this.settingsRepository.create({
+            key: 'system.backupHour',
+            value: backupHour,
+            description: '자동 백업 실행 시간 (0-23)',
+          });
+          await this.settingsRepository.save(newSetting);
+        }
+      }
+
+      // 활동 로그 기록
+      await this.logActivity(
+        ActivityType.SETTINGS_UPDATED,
+        '백업 스케줄 설정 변경',
+        `자동 백업: ${enabled ? '활성화' : '비활성화'}, 보관 기간: ${retentionDays}일${backupHour !== undefined ? `, 백업 시간: ${backupHour}시` : ''}`,
+        undefined,
+        { enabled, retentionDays, backupHour },
+        'info',
+      );
+
+    } catch (error) {
+
+      throw error;
+    }
+  }
+
+  /**
+   * 다음 백업 예정 시간 계산
+   */
+  private getNextBackupTime(backupHour: number = 2): string {
+    const now = new Date();
+    const next = new Date(now);
+
+    // 지정된 시간으로 설정
+    next.setHours(backupHour, 0, 0, 0);
+
+    // 현재 시간이 백업 시간 이후라면 다음 날로 설정
+    if (now.getHours() >= backupHour) {
+      next.setDate(next.getDate() + 1);
+    }
+
+    return next.toISOString();
   }
 
 }

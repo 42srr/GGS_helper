@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Plus, Trash2, Eye, LogOut, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ReservationDetailModal } from '../components/reservations/ReservationDetailModal';
+import { CheckoutPhotoModal } from '../components/checkout/CheckoutPhotoModal';
 
 interface Reservation {
   reservationId: number;
@@ -36,6 +37,8 @@ export function MyReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [selectedReservationForCheckout, setSelectedReservationForCheckout] = useState<Reservation | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -46,7 +49,7 @@ export function MyReservationsPage() {
   const fetchMyReservations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/reservations/my', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/my`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -57,12 +60,11 @@ export function MyReservationsPage() {
         setReservations(data);
       }
     } catch (error) {
-      console.error('Failed to fetch reservations:', error);
+
     } finally {
       setLoading(false);
     }
   };
-
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -151,7 +153,7 @@ export function MyReservationsPage() {
 
   const handleCheckIn = async (reservationId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/reservations/${reservationId}/check-in`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}/check-in`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -166,39 +168,42 @@ export function MyReservationsPage() {
         alert(errorData.message || '체크인에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Check-in error:', error);
+
       alert('체크인 중 오류가 발생했습니다.');
     }
   };
 
-  const handleEarlyReturn = async (reservationId: number) => {
-    if (confirm('회의실을 조기 반납하시겠습니까? 예약이 즉시 종료됩니다.')) {
-      try {
-        const response = await fetch(`http://localhost:3001/reservations/${reservationId}/early-return`, {
+  const handleEarlyReturnClick = async (reservation: Reservation) => {
+    // API 호출하여 awaiting_checkout 상태로 전환
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/reservations/${reservation.reservationId}/early-return`,
+        {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
-        });
-
-        if (response.ok) {
-          alert('조기 반납이 완료되었습니다.');
-          fetchMyReservations(); // 목록 새로고침
-        } else {
-          const errorData = await response.json();
-          alert(errorData.message || '조기 반납에 실패했습니다.');
         }
-      } catch (error) {
-        console.error('Early return error:', error);
-        alert('조기 반납 중 오류가 발생했습니다.');
+      );
+
+      if (response.ok) {
+        // 즉시 체크아웃 사진 업로드 모달 열기
+        setSelectedReservationForCheckout(reservation);
+        setCheckoutModalOpen(true);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || '조기 반납에 실패했습니다.');
       }
+    } catch (error) {
+
+      alert('조기 반납 중 오류가 발생했습니다.');
     }
   };
 
   const handleCancelReservation = async (reservationId: number) => {
     if (confirm('정말로 이 예약을 취소하시겠습니까?')) {
       try {
-        const response = await fetch(`http://localhost:3001/reservations/${reservationId}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations/${reservationId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -212,7 +217,7 @@ export function MyReservationsPage() {
           alert('예약 취소에 실패했습니다.');
         }
       } catch (error) {
-        console.error('Cancel reservation error:', error);
+
         alert('예약 취소 중 오류가 발생했습니다.');
       }
     }
@@ -394,7 +399,7 @@ export function MyReservationsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleEarlyReturn(reservation.reservationId)}
+                                  onClick={() => handleEarlyReturnClick(reservation)}
                                   disabled={!canEarlyReturn(reservation)}
                                   className="text-blue-600 hover:text-blue-700 border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400"
                                 >
@@ -428,11 +433,56 @@ export function MyReservationsPage() {
       {/* 예약 상세 모달 */}
       {selectedReservation && (
         <ReservationDetailModal
-          reservation={selectedReservation}
+          reservation={{
+            reservationId: selectedReservation.reservationId,
+            roomId: selectedReservation.roomId,
+            userId: selectedReservation.userId,
+            title: selectedReservation.title,
+            description: selectedReservation.description,
+            startTime: new Date(selectedReservation.startTime),
+            endTime: new Date(selectedReservation.endTime),
+            status: selectedReservation.status as 'confirmed' | 'pending' | 'cancelled' | 'in_progress' | 'awaiting_checkout' | 'finished' | undefined,
+            room: {
+              roomId: selectedReservation.room.roomId,
+              name: selectedReservation.room.name,
+              location: selectedReservation.room.location,
+              capacity: 0, // Not available in this context
+              isAvailable: true,
+            },
+            user: selectedReservation.user ? {
+              userId: selectedReservation.user.userId,
+              name: selectedReservation.user.login,
+            } : undefined
+          }}
+          room={{
+            roomId: selectedReservation.room.roomId,
+            name: selectedReservation.room.name,
+            location: selectedReservation.room.location,
+            capacity: 0,
+            isAvailable: true,
+          }}
           isOpen={!!selectedReservation}
           onClose={() => {
             setSelectedReservation(null);
             fetchMyReservations();
+          }}
+        />
+      )}
+
+      {/* 체크아웃 사진 모달 */}
+      {checkoutModalOpen && selectedReservationForCheckout && (
+        <CheckoutPhotoModal
+          reservation={{
+            reservationId: selectedReservationForCheckout.reservationId,
+            roomName: selectedReservationForCheckout.room.name,
+            title: selectedReservationForCheckout.title,
+          }}
+          isOpen={checkoutModalOpen}
+          onClose={() => setCheckoutModalOpen(false)}
+          onSuccess={() => {
+            setCheckoutModalOpen(false);
+            fetchMyReservations();
+            alert('반납이 완료되었습니다!');
           }}
         />
       )}

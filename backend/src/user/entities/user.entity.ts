@@ -5,27 +5,29 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
-  OneToOne,
+  Index,
 } from 'typeorm';
 import { Reservation } from '../../reservation/entities/reservation.entity';
-import { Info } from './info.entity';
 
 @Entity('users')
+@Index(['lastLoginAt'])
+@Index(['createdAt'])
+@Index(['role'])
 export class User {
   @PrimaryGeneratedColumn({ name: 'user_id' })
   userId: number;
 
-  @Column({ name: 'user_intraid', unique: true })
+  @Column({ name: 'user_intra_id', unique: true, length: 50 })
   intraId: string;
 
-  @Column({ name: 'user_name' })
+  @Column({ name: 'user_name', length: 50 })
   name: string;
+
+  @Column({ name: 'user_password', length: 255, select: false })
+  password: string;
 
   @Column({ name: 'user_isavailable', default: true })
   isAvailable: boolean;
-
-  @Column({ name: 'user_profileimgurl', default: '' })
-  profileImgUrl: string;
 
   @Column({
     name: 'user_role',
@@ -41,14 +43,8 @@ export class User {
   @UpdateDateColumn({ name: 'user_updatedat' })
   updatedAt: Date;
 
-  @Column({ name: 'user_refreshtoken', default: '' })
-  refreshToken: string;
-
   @Column({ name: 'user_lastloginat', nullable: true })
   lastLoginAt: Date;
-
-  @Column({ name: 'user_grade', default: 'Cadet' })
-  grade: string;
 
   @Column({ name: 'no_show_count', type: 'integer', default: 0 })
   noShowCount: number;
@@ -66,9 +62,6 @@ export class User {
   banUntil: Date | null;
 
   // Relationships
-  @OneToOne(() => Info, (info) => info.user, { cascade: true })
-  info: Info;
-
   @OneToMany(() => Reservation, (reservation) => reservation.user)
   reservations: Reservation[];
 }

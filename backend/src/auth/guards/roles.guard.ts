@@ -13,6 +13,7 @@ import {
   PERMISSIONS_KEY,
   OWNER_ONLY_KEY,
 } from '../decorators/roles.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -21,6 +22,15 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip for @Public() endpoints
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
@@ -52,11 +62,16 @@ export class RolesGuard implements CanActivate {
     if (requiredPermissions) {
       const userPermissions = PERMISSIONS[user.role as Role] || [];
       const hasPermission = requiredPermissions.every((permission) => {
-        // 와일드카드 권한 체크 (예: admin은 모든 권한)
-        if (userPermissions.includes(`${permission.split(':')[0]}:*`)) {
+        // 직접 권한 매칭
+        if (userPermissions.includes(permission)) {
           return true;
         }
-        return userPermissions.includes(permission);
+        // 와일드카드 권한 체크 (예: admin:* 권한이 admin:read를 포함)
+        const [resource] = permission.split(':');
+        if (userPermissions.includes(`${resource}:*`)) {
+          return true;
+        }
+        return false;
       });
 
       if (!hasPermission) {

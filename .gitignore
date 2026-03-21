@@ -142,9 +142,6 @@ ecosystem.config.js
 # claude
 /.claude
 
-# documents
-/docs
-
 # ============================================
 # IDEs and Editors
 # ============================================
@@ -185,6 +182,8 @@ Icon
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+nul
+**/nul
 
 # Linux
 *~

@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select';
 import {
   Users,
-  User,
   CheckCircle,
   XCircle,
   Clock,
@@ -23,7 +22,6 @@ import {
   ArrowLeft,
   Search,
   Filter,
-  Download,
   RefreshCw,
 } from 'lucide-react';
 
@@ -62,7 +60,7 @@ export function AdminClubsPage() {
   const fetchClubs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/clubs/admin/all', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/all`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -73,7 +71,7 @@ export function AdminClubsPage() {
         setClubs(data);
       }
     } catch (error) {
-      console.error('Failed to fetch clubs:', error);
+
     } finally {
       setLoading(false);
     }
@@ -120,7 +118,7 @@ export function AdminClubsPage() {
     if (!confirm('이 동아리를 승인하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/clubs/admin/${clubId}/approve`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/approve`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -134,7 +132,7 @@ export function AdminClubsPage() {
         alert('동아리 승인에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to approve club:', error);
+
       alert('동아리 승인 중 오류가 발생했습니다.');
     }
   };
@@ -143,7 +141,7 @@ export function AdminClubsPage() {
     if (!confirm('이 동아리를 거부하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/clubs/admin/${clubId}/reject`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/clubs/admin/${clubId}/reject`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -157,7 +155,7 @@ export function AdminClubsPage() {
         alert('동아리 거부에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to reject club:', error);
+
       alert('동아리 거부 중 오류가 발생했습니다.');
     }
   };

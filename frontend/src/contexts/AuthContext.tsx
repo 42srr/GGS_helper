@@ -10,13 +10,9 @@ export const Role = {
 export type Role = typeof Role[keyof typeof Role];
 
 interface User {
-  id: number;
-  email: string;
-  login: string;
-  firstName: string;
-  lastName: string;
-  displayName: string;
-  imageUrl?: string;
+  userId: number;
+  intraId: string;
+  name: string;
   role: Role;
 }
 
@@ -27,7 +23,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: () => void;
+  login: (intraId: string, password: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
   hasRole: (role: Role) => boolean;
@@ -40,7 +36,7 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -70,15 +66,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           if (response.ok) {
             const user: User = await response.json();
+
             setAuthState({
               user,
               isAuthenticated: true,
               isLoading: false,
             });
           } else if (response.status === 401 && refreshToken) {
+
             // 토큰 갱신 시도
             await handleRefreshToken();
           } else {
+
             // 토큰이 유효하지 않음
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
@@ -89,7 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
+
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -97,6 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           });
         }
       } else {
+
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -152,19 +152,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
         logout();
       }
     } catch (error) {
-      console.error('Token refresh failed:', error);
+
       logout();
     }
   };
 
-  const login = () => {
-    // 42 OAuth 로그인 페이지로 리다이렉트
-    window.location.href = `${API_BASE_URL}/auth/42`;
+  const login = async (intraId: string, password: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ intraId, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const { access_token, user } = await response.json();
+
+      // 토큰과 사용자 정보 저장
+      localStorage.setItem('accessToken', access_token);
+      localStorage.setItem('userId', user.userId.toString());
+
+      setAuthState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+
+      throw error;
+    }
   };
 
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');
 
+    // 먼저 상태를 초기화
+    setAuthState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+
+    // 백엔드에 로그아웃 요청 (비동기로 처리, 실패해도 계속 진행)
     if (accessToken) {
       try {
         await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -173,21 +208,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
             Authorization: `Bearer ${accessToken}`,
           },
         });
+
       } catch (error) {
-        console.error('Logout API call failed:', error);
+
       }
     }
 
-    // 로컬 스토리지 정리
+    // 인증 관련 항목만 명시적으로 삭제
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
+    sessionStorage.clear();
 
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    // 페이지 새로고침 대신 navigate 사용하도록 수정 필요
+    // 하지만 이 컴포넌트에서는 navigate를 사용할 수 없으므로
+    // window.location을 사용하되, 약간의 딜레이를 줘서 storage가 반영되도록 함
+    setTimeout(() => {
+
+      window.location.href = '/login';
+    }, 100);
   };
 
   const refreshToken = async () => {

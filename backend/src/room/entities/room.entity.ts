@@ -5,10 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Reservation } from '../../reservation/entities/reservation.entity';
 
 @Entity('room')
+@Index(['isAvailable'])
+@Index(['name'])
 export class Room {
   @PrimaryGeneratedColumn({ name: 'room_id' })
   roomId: number;

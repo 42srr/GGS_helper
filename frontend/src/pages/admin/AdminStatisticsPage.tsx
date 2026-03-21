@@ -88,7 +88,7 @@ export function AdminStatisticsPage() {
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/admin/statistics?period=${selectedPeriod}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics?period=${selectedPeriod}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -99,7 +99,7 @@ export function AdminStatisticsPage() {
         setStatistics(data);
       }
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+
       alert('통계 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export function AdminStatisticsPage() {
 
   const handleExportReport = async () => {
     try {
-      const response = await fetch('http://localhost:3001/admin/statistics/export', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/statistics/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -126,7 +126,7 @@ export function AdminStatisticsPage() {
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to export report:', error);
+
     }
   };
 

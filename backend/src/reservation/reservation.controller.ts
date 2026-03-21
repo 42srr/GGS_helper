@@ -10,24 +10,63 @@ import {
   Req,
   Query,
   Res,
+  UseInterceptors,
+  UploadedFile,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ReservationService } from './reservation.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
+import { CheckConflictDto } from './dto/check-conflict.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '../auth/enums/role.enum';
+import { multerConfig } from '../common/multer.config';
+import { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 
 @Controller('reservations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
+  /**
+   * 예약 생성 - 스팸 예약 방지
+   * 60초에 20번까지만 허용
+   */
   @Post()
-  create(@Body() createReservationDto: CreateReservationDto, @Req() req: any) {
+  @Throttle({ default: { limit: 20, ttl: 60000 } })  // 60초에 20번
+  create(@Body() createReservationDto: CreateReservationDto, @Req() req: AuthenticatedRequest) {
     return this.reservationService.create(createReservationDto, req.user.userId);
+  }
+
+  /**
+   * 충돌 체크 - 빈번한 호출 가능하므로 여유있게 설정
+   * 60초에 60번까지 허용
+   */
+  @Post('check-conflict')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })  // 60초에 60번
+  async checkConflict(@Body() checkConflictDto: CheckConflictDto) {
+    const { roomId, startDatetime, endDatetime } = checkConflictDto;
+    const start = new Date(startDatetime);
+    const end = new Date(endDatetime);
+
+    const hasConflict = await this.reservationService.checkConflict(
+      roomId,
+      start,
+      end,
+    );
+
+    return {
+      hasConflict,
+      message: hasConflict
+        ? '해당 시간대에 이미 다른 예약이 있습니다'
+        : '예약 가능한 시간입니다',
+    };
   }
 
   @Get()
@@ -44,7 +83,7 @@ export class ReservationController {
   }
 
   @Get('my')
-  findMyReservations(@Req() req: any) {
+  findMyReservations(@Req() req: AuthenticatedRequest) {
     return this.reservationService.findByUser(req.user.userId);
   }
 
@@ -76,7 +115,7 @@ export class ReservationController {
   update(
     @Param('id') id: string,
     @Body() updateReservationDto: UpdateReservationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.reservationService.update(
       +id,
@@ -86,7 +125,7 @@ export class ReservationController {
   }
 
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string, @Req() req: any) {
+  cancel(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.cancel(+id, req.user.userId);
   }
 
@@ -96,18 +135,17 @@ export class ReservationController {
   }
 
   @Post(':id/no-show')
-  @Public()
   reportNoShow(@Param('id') id: string) {
     return this.reservationService.reportNoShow(+id);
   }
 
   @Post(':id/early-return')
-  earlyReturn(@Param('id') id: string, @Req() req: any) {
+  earlyReturn(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.earlyReturn(+id, req.user.userId);
   }
 
   @Post(':id/check-in')
-  checkIn(@Param('id') id: string, @Req() req: any) {
+  checkIn(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.reservationService.checkIn(+id, req.user.userId);
   }
 
@@ -143,5 +181,46 @@ export class ReservationController {
     @Body() body: { status: string },
   ) {
     return this.reservationService.adminUpdateStatus(+id, body.status);
+  }
+
+  /**
+   * 체크아웃 인증 사진 업로드
+   */
+  @Post(':id/checkout-photo')
+  @UseInterceptors(FileInterceptor('photo', multerConfig))
+  async uploadCheckoutPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('notes') notes: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return await this.reservationService.uploadCheckoutPhoto(
+      id,
+      file,
+      req.user.userId,
+      notes,
+    );
+  }
+
+  /**
+   * 체크아웃 사진 조회
+   */
+  @Get(':id/checkout-photo')
+  async getCheckoutPhoto(@Param('id', ParseIntPipe) id: number) {
+    return await this.reservationService.getCheckoutPhoto(id);
+  }
+
+  /**
+   * 체크아웃 사진 삭제
+   */
+  @Delete(':id/checkout-photo')
+  async deleteCheckoutPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.reservationService.deleteCheckoutPhoto(id, req.user.userId);
+    return {
+      message: 'Checkout photo deleted successfully',
+    };
   }
 }
