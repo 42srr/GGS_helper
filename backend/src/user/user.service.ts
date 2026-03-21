@@ -39,7 +39,7 @@ export class UserService {
   async findByIntraId(intraId: string): Promise<User | null> {
     return await this.userRepository.findOne({
       where: { intraId },
-      select: ['userId', 'intraId', 'password', 'role'],
+      select: ['userId', 'intraId', 'password', 'role', 'isAvailable'],
     });
   }
 

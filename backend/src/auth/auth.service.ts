@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { AdminService } from '../admin/admin.service';
+import { ActivityType } from '../admin/entities/activity-log.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -65,14 +66,18 @@ export class AuthService {
     // 비밀번호 해싱
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 사용자 생성
+    // 사용자 생성 (관리자 승인 전까지 비활성 상태)
     await this.userService.create({
       name,
       intraId,
       password: hashedPassword,
+      isAvailable: false,
     });
 
-    return { message: '회원가입이 완료되었습니다. 로그인해주세요.' };
+    // Discord 알림 전송 (비동기, 실패해도 회원가입에 영향 없음)
+    this.sendDiscordRegistrationNotification({ name, intraId }).catch(() => {});
+
+    return { message: '회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.' };
   }
 
   async changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{ message: string }> {
@@ -109,6 +114,7 @@ export class AuthService {
     userAgent?: string,
   ): Promise<{
     access_token: string;
+    refresh_token: string;
     user: {
       userId: number;
       intraId: string;
@@ -120,13 +126,21 @@ export class AuthService {
     // intraId로 사용자 조회
     const user = await this.userService.findByIntraId(intraId);
     if (!user) {
+      this.logLoginFailure(intraId, ipAddress, '존재하지 않는 계정');
       throw new UnauthorizedException('인트라 ID 또는 비밀번호가 올바르지 않습니다');
     }
 
     // 비밀번호 검증
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      this.logLoginFailure(intraId, ipAddress, '비밀번호 불일치');
       throw new UnauthorizedException('인트라 ID 또는 비밀번호가 올바르지 않습니다');
+    }
+
+    // 비활성 사용자 체크
+    if (user.isAvailable === false) {
+      this.logLoginFailure(intraId, ipAddress, '비활성 계정 로그인 시도');
+      throw new UnauthorizedException('비활성 상태입니다. 관리자에게 문의해주세요.');
     }
 
     // JWT 생성 (JWT 표준에 맞춰 sub 사용)
@@ -135,7 +149,8 @@ export class AuthService {
       userId: user.userId,
       role: user.role
     };
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     // 마지막 로그인 시간 업데이트
     await this.userService.updateLastLogin(user.userId);
@@ -145,11 +160,60 @@ export class AuthService {
 
     return {
       access_token: accessToken,
+      refresh_token: refreshToken,
       user: {
         userId: user.userId,
         intraId: user.intraId,
         role: user.role,
       },
     };
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<{ access_token: string }> {
+    try {
+      const decoded = this.jwtService.verify(refreshToken);
+
+      // 블랙리스트 체크
+      const isBlacklisted = await this.tokenBlacklistService.isBlacklisted(refreshToken);
+      if (isBlacklisted) {
+        throw new UnauthorizedException('토큰이 만료되었습니다');
+      }
+
+      const payload = {
+        sub: decoded.userId,
+        userId: decoded.userId,
+        role: decoded.role,
+      };
+      const newAccessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+
+      return { access_token: newAccessToken };
+    } catch (error) {
+      throw new UnauthorizedException('토큰 갱신에 실패했습니다. 다시 로그인해주세요.');
+    }
+  }
+
+  private async sendDiscordRegistrationNotification(userData: { name: string; intraId: string }): Promise<void> {
+    try {
+      const settings = await this.adminService.getSettings();
+      if (settings.notifications?.discordEnabled && settings.notifications?.discordWebhookUrl) {
+        await this.adminService.sendDiscordRegistrationNotification(
+          settings.notifications.discordWebhookUrl,
+          userData,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send Discord registration notification: ${error.message}`);
+    }
+  }
+
+  private logLoginFailure(intraId: string, ipAddress?: string, reason?: string): void {
+    this.adminService.logActivity(
+      ActivityType.LOGIN_FAILED,
+      '로그인 실패',
+      `${intraId} - ${reason}`,
+      undefined,
+      { intraId, ipAddress: ipAddress || 'unknown' },
+      'warning',
+    ).catch(() => {});
   }
 }
