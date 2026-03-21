@@ -15,7 +15,7 @@ export function ReservationsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 타임라인 뷰 상태
-  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
@@ -27,14 +27,10 @@ export function ReservationsPage() {
       setLoading(true);
       const [reservationsResponse, roomsResponse] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/reservations`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/rooms`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+          credentials: 'include',
         }),
       ]);
 
@@ -124,37 +120,39 @@ export function ReservationsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <main className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
             회의실 예약 현황
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             캘린더에서 예약 현황을 확인하고 관리하세요.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 필터 사이드바 */}
-          <div className="lg:col-span-1 space-y-6">
-            <ReservationFilters
-              rooms={rooms}
-              selectedRooms={selectedRooms}
-              onRoomFilter={setSelectedRooms}
-              onClearFilters={handleClearFilters}
-            />
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* 필터 사이드바 - 모바일에서는 접힘 */}
+          <div className="lg:col-span-1 flex gap-3 lg:flex-col lg:gap-6">
+            <div className="flex-1 lg:flex-none">
+              <ReservationFilters
+                rooms={rooms}
+                selectedRooms={selectedRooms}
+                onRoomFilter={setSelectedRooms}
+                onClearFilters={handleClearFilters}
+              />
+            </div>
 
             {/* 통계 정보 */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 flex lg:block items-center gap-2">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">
                 {filteredReservations.length}
               </div>
-              <div className="text-sm text-gray-600">전체 예약</div>
+              <div className="text-xs sm:text-sm text-gray-600">전체 예약</div>
             </div>
           </div>
 
           {/* 캘린더 메인 영역 */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-3 sm:space-y-6">
             {/* 타임라인 헤더 */}
             <TimelineHeader
               viewMode={viewMode}

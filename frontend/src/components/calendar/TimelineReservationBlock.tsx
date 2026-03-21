@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Reservation, RoomColor } from '@/types/calendar';
 import { formatTimeRange } from '@/utils/calendar/timeSlots';
 import { getStatusStyle } from '@/utils/calendar/roomColors';
@@ -15,7 +16,7 @@ interface TimelineReservationBlockProps {
   onClick?: () => void;
 }
 
-export function TimelineReservationBlock({
+export const TimelineReservationBlock = memo(function TimelineReservationBlock({
   reservation,
   roomColor,
   position,
@@ -57,21 +58,21 @@ export function TimelineReservationBlock({
       )}
 
       {/* 예약 제목 */}
-      <div className="text-xs font-semibold truncate pr-4">
+      <div className="text-[10px] sm:text-xs font-semibold truncate pr-4">
         {reservation.title}
       </div>
 
       {/* 시간 정보 */}
-      <div className="text-xs opacity-75 truncate">
+      <div className="text-[10px] sm:text-xs opacity-75 truncate">
         {formatTimeRange(reservation.startTime, reservation.endTime)}
       </div>
 
       {/* 사용자 정보 (공간이 충분할 때만) */}
       {position.height > 50 && reservation.user && (
-        <div className="text-xs opacity-60 truncate mt-0.5">
+        <div className="hidden sm:block text-xs opacity-60 truncate mt-0.5">
           {reservation.user.name}
         </div>
       )}
     </div>
   );
-}
+});
